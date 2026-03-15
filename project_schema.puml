@@ -17,6 +17,7 @@ package "Entities" {
         - lastUpdateDate: LocalDateTime
     }
 
+
     class Group {
         - id: long
         - name: String
