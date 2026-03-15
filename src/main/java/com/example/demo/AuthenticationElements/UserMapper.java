@@ -1,0 +1,33 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Interface.java to edit this template
+ */
+package com.example.demo.AuthenticationElements;
+
+import com.example.demo.Entities.User;
+import org.springframework.stereotype.Component;
+
+/**
+ *
+ * @author 2005m
+ */
+@Component // Spring'in bu sınıfı yönetmesi için şart
+public class UserMapper implements IMapper<UserResponse, User> {
+
+    @Override
+    public UserResponse toResponse(User u) {
+        UserResponse ur = new UserResponse(u.getId(), u.getName(), u.getSurName(), u.geteMail());
+        return ur;
+
+    }
+
+    @Override
+    public User updateEntityWithResponse(User existingUser, UserResponse dto) {
+        existingUser.setName(dto.getName());
+        existingUser.seteMail(dto.geteMail());
+        existingUser.setSurName(dto.getSurName());
+        return existingUser;
+
+    }
+
+}

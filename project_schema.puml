@@ -1,0 +1,73 @@
+@startuml NoteP Project Schema
+
+package "Entities" {
+    class User {
+        - id: long
+        - name: String
+        - surName: String
+        - eMail: String
+        - password: String
+        - pages: List<Page>
+    }
+
+    class Page {
+        - title: String
+        - content: String
+        - createdDate: LocalDateTime
+        - lastUpdateDate: LocalDateTime
+    }
+
+    class Group {
+        - id: long
+        - name: String
+        - password: String
+        - members: List<User>
+    }
+}
+
+package "DataAccess" {
+    interface UserRepository extends JpaRepository<User, Long>
+    interface PageRepository extends JpaRepository<Page, String>
+    interface GroupRepository extends JpaRepository<Group, Long>
+}
+
+package "Bussiness" {
+    class UserService {
+        - userRepository: UserRepository
+        - mapper: UserMapper
+        + getById(id: long): UserResponse
+        + deleteById(id: long)
+        + update(u: User)
+    }
+
+    class PageService {
+        // Empty
+    }
+}
+
+package "DTOs" {
+    class UserResponse {
+        - id: long
+        - name: String
+        - surName: String
+        - eMail: String
+    }
+
+    interface IMapper<Response, Entity> {
+        + toResponse(e: Entity): Response
+    }
+
+    class UserMapper implements IMapper<UserResponse, User> {
+        + toResponse(u: User): UserResponse
+    }
+}
+
+UserService --> UserRepository
+UserService --> UserMapper
+UserMapper --> UserResponse
+UserMapper --> User
+
+User --> Page : has many
+Group --> User : has many
+
+@enduml
