@@ -20,26 +20,37 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id")
-    private long id;
+    private Long id;
     @Column(name = "name", nullable = false)
     private String name;
     @Column(name = "surName", nullable = false)
     private String surName;
-    @Column(name = "eMail", nullable = false)
+    @Column(name = "eMail", nullable = false,unique = true)
     private String eMail;
     @Column(name = "password", nullable = false)
     private String password;
-    @Column(name = "pages")
-    private List<Page> pages = new ArrayList<Page>();
 
-    public User(int id, String name, String surName, String eMail, String password) {
-        this.id = id;
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL,orphanRemoval = true)
+    private List<Page> pages = new ArrayList<Page>();
+@ManyToMany(mappedBy = "members")
+    private List<Group> groups=new ArrayList<>();
+
+    public User(String name, String surName, String eMail, String password) {
         this.name = name;
         this.surName = surName;
         this.eMail = eMail;
         this.password = password;
     }
 
+    
+    public List<Group> getGroups() {
+        return groups;
+    }
+
+    public void setGroups(List<Group> groups) {
+        this.groups = groups;
+    }
+    
     public List<Page> getPages() {
         return pages;
     }
@@ -48,11 +59,11 @@ public class User {
         this.pages = pages;
     }
 
-    public long getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(Long id) {
         this.id = id;
     }
 

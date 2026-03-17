@@ -4,15 +4,19 @@
  */
 package com.example.demo.DataAccess;
 import com.example.demo.Entities.Group;
+import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 /**
  *
  * @author 2005m
  */
-@Repository
+
 public interface GroupRepository extends JpaRepository<Group, Long> {
     
-    
+   Optional<Group> findByName(String name);
+   
+     List<Group> findByMembersId(Long userID);
     
 }

@@ -13,31 +13,37 @@ import java.util.List;
  * @author 2005m
  */
 @Entity
-@Table(name = "group")
+@Table(name = "app_group")
 public class Group {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "group_id")
-    private long id;
+    private Long id;
     @Column(name = "name", nullable = false)
     private String name;
     @Column(name = "password", nullable = false)
     private String password;
-    @Column(name = "members")
+    @ManyToMany
+    @JoinTable(name = "group_members",
+            joinColumns = @JoinColumn(name = "group_id"),
+            inverseJoinColumns = @JoinColumn(name = "user_id")
+    )
     private List<User> members = new ArrayList<User>();
+    
+    @OneToMany(mappedBy = "group",cascade = CascadeType.ALL)
+    private List<Page> pages=new ArrayList<>();
 
-    public Group(long id, String name, String password) {
-        this.id = id;
+    public Group(String name, String password) {
         this.name = name;
         this.password = password;
     }
 
-    public long getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(long id) {
+    public void setId(Long id) {
         this.id = id;
     }
 

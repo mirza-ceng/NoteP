@@ -4,6 +4,7 @@
  */
 package com.example.demo.Bussiness;
 
+import com.example.demo.AuthenticationElements.JWTUtil;
 import com.example.demo.AuthenticationElements.LoginRequest;
 import com.example.demo.AuthenticationElements.LoginResponse;
 import com.example.demo.AuthenticationElements.UserMapper;
@@ -25,15 +26,21 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserMapper mapper;
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final BCryptPasswordEncoder passwordEncoder;
+    private final JWTUtil jwtUtil;
 
-    public UserService(UserRepository userRepository, com.example.demo.AuthenticationElements.UserMapper mapper) {
+    public UserService(UserRepository userRepository, UserMapper mapper, JWTUtil jwtUtil, BCryptPasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.mapper = mapper;
+        this.jwtUtil = jwtUtil;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
-    public void register(User user) {
+    public void register(User user) {//userRequest kullanılacak?
+        if (userRepository.existsByEmail(user.geteMail())) {
+            throw new RuntimeException("This User Already Existed.");
+        }
         String password = user.getPassword();
         String encodedPassword = passwordEncoder.encode(password);
         user.setPassword(encodedPassword);
@@ -41,17 +48,20 @@ public class UserService {
 
     }
 
+
     @Transactional
     public LoginResponse logIn(LoginRequest request) {
-        User user = userRepository.findByEMail(request.geteMail());
-        if (user != null && passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+        User user = userRepository.findByEMail(request.geteMail()).orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        if (passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             LoginResponse response = new LoginResponse();
+            String token = jwtUtil.generateToken(user.geteMail());
             response.setMessage("BAŞARILI");
             response.setUser(mapper.toResponse(user));
+            response.setToken(token);
             return response;
 
         }
-        return null;
+       throw new RuntimeException("Hatalı şifre ya da e-posta!");
 
     }
 
