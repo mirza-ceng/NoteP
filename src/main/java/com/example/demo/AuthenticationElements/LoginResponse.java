@@ -4,6 +4,8 @@
  */
 package com.example.demo.AuthenticationElements;
 
+import com.example.demo.DTOs.UserResponse;
+
 /**
  *
  * @author 2005m

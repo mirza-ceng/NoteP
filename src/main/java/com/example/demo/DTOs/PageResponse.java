@@ -2,13 +2,13 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package com.example.demo.AuthenticationElements;
+package com.example.demo.DTOs;
 
 /**
  *
  * @author 2005m
  */
-public class PageResponse {
+public class PageResponse { //used for both request and response!
 
     private Long id;
     private String title;

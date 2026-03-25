@@ -4,9 +4,9 @@
  */
 package com.example.demo.Bussiness;
 
-import com.example.demo.AuthenticationElements.PageMapper;
-import com.example.demo.AuthenticationElements.PageResponse;
-import com.example.demo.AuthenticationElements.UserMapper;
+import com.example.demo.DTOs.PageMapper;
+import com.example.demo.DTOs.PageResponse;
+import com.example.demo.DTOs.UserMapper;
 import com.example.demo.DataAccess.PageRepository;
 import com.example.demo.DataAccess.UserRepository;
 import com.example.demo.Entities.Page;
