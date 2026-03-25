@@ -25,50 +25,49 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class PageService {
-
+    
     private final PageRepository pageRepository;
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final PageMapper pageMapper;
-
+    
     public PageService(PageRepository pageRepository, UserRepository userRepository, UserMapper userMapper, PageMapper pageMapper) {
         this.pageRepository = pageRepository;
         this.userRepository = userRepository;
         this.userMapper = userMapper;
         this.pageMapper = pageMapper;
-
+        
     }
-
+    
     private User getAuthanticatedUser() {
         String eMail = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByEMail(eMail).orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + eMail));
     }
-
+    
     private String getAuthanticatedUserEMail() {
         return SecurityContextHolder.getContext().getAuthentication().getName();
     }
-
+    
     @Transactional
-    public void savePage(Page page) {
-
+    public void savePage(PageResponse dto) {
+        
         User u = getAuthanticatedUser();
+        Page page = pageMapper.toEntity(dto);
         page.setUser(u);
         pageRepository.save(page);
-    
-
-    .
+        
     }
-
+    
     @Transactional
     public List<PageResponse> getMyPages() {
-
+        
         User u = getAuthanticatedUser();
-
+        
         List<Page> pages = pageRepository.findByUserId(u.getId());
-
+        
         return pages.stream().map(pageMapper::toResponse).collect(Collectors.toList());
     }
-
+    
     @Transactional
     public void deleteById(Long id) {
         String eMail = getAuthanticatedUserEMail();
@@ -78,22 +77,20 @@ public class PageService {
         } else {
             throw new RuntimeException("GÜVENLİK İHLALİ: Başkasına ait bir notu silemezsiniz!");
         }
-
+        
     }
-
+    
     @Transactional
     public void updatePage(Long id, PageResponse dto) {
         
         User u = getAuthanticatedUser();
-
-        
         
         Page originPage = pageRepository.findByIdAndUserId(id, u.getId()).orElseThrow(() -> new ResourceNotFoundException("Page not found "));
-
+        
         pageMapper.updateEntityWithResponse(originPage, dto);
-
+        
         pageRepository.save(originPage);
-
+        
     }
-
+    
 }

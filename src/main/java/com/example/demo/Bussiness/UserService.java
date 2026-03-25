@@ -8,6 +8,7 @@ import com.example.demo.AuthenticationElements.JWTUtil;
 import com.example.demo.AuthenticationElements.LoginRequest;
 import com.example.demo.AuthenticationElements.LoginResponse;
 import com.example.demo.AuthenticationElements.UserMapper;
+import com.example.demo.AuthenticationElements.UserRequest;
 import com.example.demo.AuthenticationElements.UserResponse;
 import com.example.demo.DataAccess.UserRepository;
 import com.example.demo.Entities.User;
@@ -37,7 +38,9 @@ public class UserService {
     }
 
     @Transactional
-    public void register(User user) {//userRequest kullanılacak?
+    public void register(UserRequest userRequest) {
+        User user=mapper.toEntity(userRequest);
+        
         if (userRepository.existsByEmail(user.geteMail())) {
             throw new RuntimeException("This User Already Existed.");
         }

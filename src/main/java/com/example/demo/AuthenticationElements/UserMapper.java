@@ -21,6 +21,12 @@ public class UserMapper implements IMapper<UserResponse, User> {
 
     }
 
+    public UserRequest toRequest(User u) {
+
+        return new UserRequest(u.getName(), u.getSurName(), u.geteMail(), u.getPassword());
+
+    }
+
     @Override
     public User updateEntityWithResponse(User existingUser, UserResponse dto) {
         existingUser.setName(dto.getName());
@@ -28,6 +34,11 @@ public class UserMapper implements IMapper<UserResponse, User> {
         existingUser.setSurName(dto.getSurName());
         return existingUser;
 
+    }
+
+    public User toEntity(UserRequest r) {
+        User u = new User(r.getName(), r.getSurName(), r.geteMail(), r.getPassword());
+        return u;
     }
 
 }

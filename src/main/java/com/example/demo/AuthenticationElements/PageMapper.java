@@ -13,23 +13,30 @@ import java.time.LocalDateTime;
  * @author 2005m
  */
 public class PageMapper implements IMapper<PageResponse, Page> {
-    
+
     @Override
     public PageResponse toResponse(Page page) {
         User owner = page.getUser();
         Long groupId = (page.getGroup() != null) ? page.getGroup().getId() : null;// could be null!!
         PageResponse response = new PageResponse(page.getId(), page.getTitle(), page.getContent(), groupId, owner.getId(), owner.getName());
-        
+
         return response;
     }
-    
+
     @Override
     public Page updateEntityWithResponse(Page existingPage, PageResponse dto) {
         existingPage.setContent(dto.getContent());
         existingPage.setTitle(dto.getTitle());
         existingPage.setLastUpdateDate(LocalDateTime.now());
         return existingPage;
-        
+
     }
+
     
+    public Page toEntity(PageResponse r) {
+        Page page = new Page(r.getTitle(), r.getContent());
+        return page;
+
+    }
+
 }
