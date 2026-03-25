@@ -10,7 +10,7 @@ package com.example.demo.AuthenticationElements;
  */
 public class UserResponse {
 
-    private long id;
+    private Long id;
 
     private String name;
 
@@ -18,7 +18,7 @@ public class UserResponse {
 
     private String eMail;
 
-    public UserResponse(long id, String name, String surName, String eMail) {
+    public UserResponse(Long id, String name, String surName, String eMail) {
         this.id = id;
         this.name = name;
         this.surName = surName;
@@ -28,7 +28,7 @@ public class UserResponse {
     /**
      * @return the id
      */
-    public long getId() {
+    public Long getId() {
         return id;
     }
 

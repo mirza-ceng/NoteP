@@ -4,6 +4,8 @@
  */
 package com.example.demo.Bussiness;
 
+import com.example.demo.AuthenticationElements.PageMapper;
+import com.example.demo.AuthenticationElements.PageResponse;
 import com.example.demo.AuthenticationElements.UserMapper;
 import com.example.demo.DataAccess.PageRepository;
 import com.example.demo.DataAccess.UserRepository;
@@ -11,25 +13,35 @@ import com.example.demo.Entities.Page;
 import com.example.demo.Entities.User;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  *
  * @author 2005m
  */
+@Service
 public class PageService {
 
     private final PageRepository pageRepository;
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final PageMapper pageMapper;
 
-    public PageService(PageRepository pageRepository, UserRepository userRepository, UserMapper userMapper) {
+    public PageService(PageRepository pageRepository, UserRepository userRepository, UserMapper userMapper, PageMapper pageMapper) {
         this.pageRepository = pageRepository;
         this.userRepository = userRepository;
         this.userMapper = userMapper;
+        this.pageMapper = pageMapper;
 
+    }
+
+    private User getAuthanticatedUser() {
+        String eMail = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByEMail(eMail).orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + eMail));
     }
 
     private String getAuthanticatedUserEMail() {
@@ -39,19 +51,22 @@ public class PageService {
     @Transactional
     public void savePage(Page page) {
 
-        String eMail = getAuthanticatedUserEMail();
-        User u = userRepository.findByEMail(eMail).orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + eMail));
+        User u = getAuthanticatedUser();
         page.setUser(u);
         pageRepository.save(page);
+    
 
+    .
     }
 
     @Transactional
-    public List<Page> getMyPages() {
-        String eMail = getAuthanticatedUserEMail();
-        User u = userRepository.findByEMail(eMail).orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + eMail));
+    public List<PageResponse> getMyPages() {
 
-        return pageRepository.findByUserId(u.getId());
+        User u = getAuthanticatedUser();
+
+        List<Page> pages = pageRepository.findByUserId(u.getId());
+
+        return pages.stream().map(pageMapper::toResponse).collect(Collectors.toList());
     }
 
     @Transactional
@@ -67,15 +82,16 @@ public class PageService {
     }
 
     @Transactional
-    public void updatePage(Long id, Page updatedPage) {
-        String eMail = getAuthanticatedUserEMail();
-        User u = userRepository.findByEMail(eMail).orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + eMail));
+    public void updatePage(Long id, PageResponse dto) {
+        
+        User u = getAuthanticatedUser();
 
+        
+        
         Page originPage = pageRepository.findByIdAndUserId(id, u.getId()).orElseThrow(() -> new ResourceNotFoundException("Page not found "));
 
-        originPage.setContent(updatedPage.getContent());
-        originPage.setLastUpdateDate(LocalDateTime.now());
-        originPage.setTitle(updatedPage.getTitle());
+        pageMapper.updateEntityWithResponse(originPage, dto);
+
         pageRepository.save(originPage);
 
     }
