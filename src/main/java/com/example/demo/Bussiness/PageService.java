@@ -9,6 +9,7 @@ import com.example.demo.DataAccess.PageRepository;
 import com.example.demo.DataAccess.UserRepository;
 import com.example.demo.Entities.Page;
 import com.example.demo.Entities.User;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -45,6 +46,7 @@ public class PageService {
 
     }
 
+    @Transactional
     public List<Page> getMyPages() {
         String eMail = getAuthanticatedUserEMail();
         User u = userRepository.findByEMail(eMail).orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + eMail));
@@ -52,19 +54,30 @@ public class PageService {
         return pageRepository.findByUserId(u.getId());
     }
 
-    public void deleteById(Long id){
+    @Transactional
+    public void deleteById(Long id) {
+        String eMail = getAuthanticatedUserEMail();
+        Page page = pageRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Page not found with id: " + eMail));
+        if (page.getUser().geteMail().equals(eMail)) {
+            pageRepository.deleteById(id);
+        } else {
+            throw new RuntimeException("GÜVENLİK İHLALİ: Başkasına ait bir notu silemezsiniz!");
+        }
+
+    }
+
+    @Transactional
+    public void updatePage(Long id, Page updatedPage) {
         String eMail = getAuthanticatedUserEMail();
         User u = userRepository.findByEMail(eMail).orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + eMail));
-        Page page=pageRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Page not found with id: " + eMail));
-        if (u.getId()==page.getUser().getId()) {
-             pageRepository.deleteById(id);
-        }else{
-            System.out.println("Yetersiz yetki");
-        }
-        
-       
+
+        Page originPage = pageRepository.findByIdAndUserId(id, u.getId()).orElseThrow(() -> new ResourceNotFoundException("Page not found "));
+
+        originPage.setContent(updatedPage.getContent());
+        originPage.setLastUpdateDate(LocalDateTime.now());
+        originPage.setTitle(updatedPage.getTitle());
+        pageRepository.save(originPage);
+
     }
-    
-    
-    
+
 }

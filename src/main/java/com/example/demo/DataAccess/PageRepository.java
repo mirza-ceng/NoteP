@@ -6,6 +6,7 @@ package com.example.demo.DataAccess;
 
 import com.example.demo.Entities.Page;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
@@ -13,6 +14,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * @author 2005m
  */
 public interface PageRepository extends JpaRepository<Page, Long> {
+
+    Optional<Page> findByIdAndUserId(Long id, Long userId);
 
     List<Page> findByUserId(Long userId);
 
