@@ -19,9 +19,12 @@ import org.springframework.beans.factory.annotation.Value;
 @Component
 public class JWTUtil {
 
-    @Value("${jwt.secretSTR}")
-    private String secretSTR;
-    private final SecretKey secretKey = Keys.hmacShaKeyFor(secretSTR.getBytes(StandardCharsets.UTF_8));
+    private final SecretKey secretKey;
+
+    public JWTUtil(@Value("${jwt.secretSTR}") String secretSTR) {
+
+        secretKey = Keys.hmacShaKeyFor(secretSTR.getBytes(StandardCharsets.UTF_8));
+    }
 
     public String generateToken(String eMail) {
         return Jwts.builder()
@@ -41,11 +44,10 @@ public class JWTUtil {
 
     public boolean validateToken(String token, String eMail) {
         String extractedEMail = extractEMail(token);
-           boolean isExpired=Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().getExpiration().before(new Date());
-           
-           return !isExpired&&extractedEMail.equals(eMail);
-           
-           
+        boolean isExpired = Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().getExpiration().before(new Date());
+
+        return !isExpired && extractedEMail.equals(eMail);
+
     }
 
 }

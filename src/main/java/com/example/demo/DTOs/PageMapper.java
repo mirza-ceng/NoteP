@@ -8,11 +8,13 @@ import com.example.demo.DTOs.PageResponse;
 import com.example.demo.Entities.Page;
 import com.example.demo.Entities.User;
 import java.time.LocalDateTime;
+import org.springframework.stereotype.Component;
 
 /**
  *
  * @author 2005m
  */
+@Component
 public class PageMapper implements IMapper<PageResponse, Page> {
 
     @Override

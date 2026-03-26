@@ -42,6 +42,9 @@ public class User {
         this.password = password;
     }
 
+    public User() {
+    }
+
     
     public List<Group> getGroups() {
         return groups;

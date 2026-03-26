@@ -54,6 +54,9 @@ public class Page {
         this.content = content;
     }
 
+    public Page() {
+    }
+
     public Long getId() {
         return id;
     }

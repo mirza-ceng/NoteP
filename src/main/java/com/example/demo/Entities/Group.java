@@ -39,6 +39,9 @@ public class Group {
         this.password = password;
     }
 
+    public Group() {
+    }
+
     public Long getId() {
         return id;
     }

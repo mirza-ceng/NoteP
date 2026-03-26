@@ -41,7 +41,7 @@ public class UserService {
     public void register(UserRequest userRequest) {
         User user=mapper.toEntity(userRequest);
         
-        if (userRepository.existsByEmail(user.geteMail())) {
+        if (userRepository.existsByEMail(user.geteMail())) {
             throw new RuntimeException("This User Already Existed.");
         }
         String password = user.getPassword();
