@@ -8,50 +8,105 @@ package "Entities" {
         - eMail: String
         - password: String
         - pages: List<Page>
+        - groups: List<Group>
     }
 
     class Page {
+        - id: long
         - title: String
         - content: String
         - createdDate: LocalDateTime
         - lastUpdateDate: LocalDateTime
+        - user: User
+        - group: Group
     }
-
 
     class Group {
         - id: long
         - name: String
         - password: String
         - members: List<User>
+        - pages: List<Page>
     }
 }
 
 package "DataAccess" {
-    interface UserRepository extends JpaRepository<User, Long>
-    interface PageRepository extends JpaRepository<Page, String>
-    interface GroupRepository extends JpaRepository<Group, Long>
+    interface UserRepository extends JpaRepository<User, Long> {
+        + findByEMail(eMail: String): Optional<User>
+        + existsByEMail(eMail: String): boolean
+    }
+
+    interface PageRepository extends JpaRepository<Page, Long> {
+        + findByIdAndUserId(id: Long, userId: Long): Optional<Page>
+        + findByUserId(userId: Long): List<Page>
+        + findByGroupId(groupId: Long): List<Page>
+        + findByUserIdAndGroupId(userId: Long, groupId: Long): List<Page>
+    }
+
+    interface GroupRepository extends JpaRepository<Group, Long> {
+        + findByName(name: String): Optional<Group>
+        + findByMembersId(userId: Long): List<Group>
+    }
 }
 
 package "Bussiness" {
     class UserService {
         - userRepository: UserRepository
         - mapper: UserMapper
+        - passwordEncoder: BCryptPasswordEncoder
+        - jwtUtil: JWTUtil
+        + register(userRequest: UserRequest)
+        + logIn(loginRequest: LoginRequest): LoginResponse
         + getById(id: long): UserResponse
         + deleteById(id: long)
-        + update(u: User)
+        + update(userRequest: UserRequest)
     }
 
     class PageService {
-        // Empty
+        - pageRepository: PageRepository
+        - userRepository: UserRepository
+        - userMapper: UserMapper
+        - pageMapper: PageMapper
+        + savePage(pageResponse: PageResponse)
+        + getMyPages(): List<PageResponse>
+        + updatePage(id: Long, pageResponse: PageResponse)
+        + deleteById(id: Long)
     }
 }
 
 package "DTOs" {
+    class UserRequest {
+        - name: String
+        - surName: String
+        - eMail: String
+        - password: String
+    }
+
     class UserResponse {
         - id: long
         - name: String
         - surName: String
         - eMail: String
+    }
+
+    class PageResponse {
+        - id: long
+        - title: String
+        - content: String
+        - groupId: Long
+        - ownerId: Long
+        - ownerName: String
+    }
+
+    class LoginRequest {
+        - eMail: String
+        - password: String
+    }
+
+    class LoginResponse {
+        - token: String
+        - message: String
+        - user: UserResponse
     }
 
     interface IMapper<Response, Entity> {
@@ -60,15 +115,105 @@ package "DTOs" {
 
     class UserMapper implements IMapper<UserResponse, User> {
         + toResponse(u: User): UserResponse
+        + toEntity(userRequest: UserRequest): User
+        + updateEntityWithRequest(user: User, userRequest: UserRequest): User
+    }
+
+    class PageMapper implements IMapper<PageResponse, Page> {
+        + toResponse(page: Page): PageResponse
+        + toEntity(pageResponse: PageResponse): Page
+        + updateEntityWithResponse(page: Page, pageResponse: PageResponse): Page
     }
 }
 
+package "Controllers" {
+    class UserController {
+        - userService: UserService
+        + register(userRequest: UserRequest): ResponseEntity<Map<String, String>>
+        + login(loginRequest: LoginRequest): ResponseEntity<String>
+        + update(userRequest: UserRequest): ResponseEntity<Map<String, String>>
+    }
+
+    class PageController {
+        - pageService: PageService
+        + save(pageResponse: PageResponse): ResponseEntity<Map<String, String>>
+        + getMyPages(): ResponseEntity<List<PageResponse>>
+        + updatePage(id: Long, pageResponse: PageResponse): ResponseEntity<Map<String, String>>
+        + delete(id: Long): ResponseEntity<Map<String, String>>
+    }
+}
+
+package "ExceptionHandling" {
+    class GlobalExceptionHandler {
+        + handleRuntimeException(ex: RuntimeException): ResponseEntity<Map<String, Object>>
+        + handleIllegalArgumentException(ex: IllegalArgumentException): ResponseEntity<Map<String, Object>>
+        + handleGeneralException(ex: Exception): ResponseEntity<Map<String, Object>>
+    }
+}
+
+package "AuthenticationElements" {
+    class JWTUtil {
+        - secretKey: SecretKey
+        + generateToken(eMail: String): String
+        + extractEMail(token: String): String
+        + validateToken(token: String, eMail: String): boolean
+    }
+
+    class JWTFilter {
+        - jwtUtil: JWTUtil
+        + doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, filterChain: FilterChain)
+    }
+
+    class LoginRequest {
+        - eMail: String
+        - password: String
+    }
+
+    class LoginResponse {
+        - token: String
+        - message: String
+        - user: UserResponse
+    }
+}
+
+package "Config" {
+    class Config {
+        + passwordEncoder(): BCryptPasswordEncoder
+        + filterChain(http: HttpSecurity): SecurityFilterChain
+    }
+}
+
+UserController --> UserService
 UserService --> UserRepository
 UserService --> UserMapper
+UserService --> JWTUtil
+UserService --> BCryptPasswordEncoder
+
+PageController --> PageService
+PageService --> PageRepository
+PageService --> UserRepository
+PageService --> UserMapper
+PageService --> PageMapper
+
 UserMapper --> UserResponse
+UserMapper --> UserRequest
 UserMapper --> User
 
+PageMapper --> PageResponse
+PageMapper --> Page
+
 User --> Page : has many
+User --> Group : has many
+Group --> Page : has many
 Group --> User : has many
+
+Page --> User : belongs to
+Page --> Group : belongs to
+
+GlobalExceptionHandler --> Controllers : advises
+
+JWTFilter --> JWTUtil
+Config --> BCryptPasswordEncoder
+Config --> JWTFilter
 
 @enduml
