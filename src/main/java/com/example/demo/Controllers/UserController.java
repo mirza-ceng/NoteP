@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  *
@@ -31,11 +33,13 @@ public class UserController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<String> register(
+    public ResponseEntity<Map<String, String>> register(
             @RequestBody UserRequest userRequest
     ) {
         UserService.register(userRequest);
-        return ResponseEntity.status(HttpStatus.CREATED).body("Kullanıcı oluşturuldu.");
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Kullanıcı oluşturuldu.");
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/login")

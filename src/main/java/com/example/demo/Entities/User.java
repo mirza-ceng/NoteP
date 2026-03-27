@@ -14,7 +14,7 @@ import java.util.List;
  * @author 2005m
  */
 @Entity
-@Table(name = "user")
+@Table(name = "app_user")
 public class User {
 
     @Id

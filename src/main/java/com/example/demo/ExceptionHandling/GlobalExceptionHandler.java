@@ -13,7 +13,7 @@ import java.util.Map;
  *
  * @author 2005m
  */
-@ControllerAdvice
+@ControllerAdvice(basePackages = "com.example.demo")
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(RuntimeException.class)
