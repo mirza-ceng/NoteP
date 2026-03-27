@@ -45,15 +45,22 @@ public class UserService {
 
     @Transactional
     public void register(UserRequest userRequest) {
-        User user = mapper.toEntity(userRequest);
+        try {
+            User user = mapper.toEntity(userRequest);
+            System.out.println("User created: " + user.geteMail());
 
-        if (userRepository.existsByEMail(user.geteMail())) {
-            throw new RuntimeException("This User Already Existed.");
+            if (userRepository.existsByEMail(user.geteMail())) {
+                throw new RuntimeException("This User Already Existed.");
+            }
+            String password = user.getPassword();
+            String encodedPassword = passwordEncoder.encode(password);
+            user.setPassword(encodedPassword);
+            User savedUser = userRepository.save(user);
+            System.out.println("User saved: " + savedUser.geteMail() + " ID: " + savedUser.getId());
+        } catch (Exception e) {
+            System.out.println("Exception in register: " + e.getMessage());
+            throw e;
         }
-        String password = user.getPassword();
-        String encodedPassword = passwordEncoder.encode(password);
-        user.setPassword(encodedPassword);
-        userRepository.save(user);
 
     }
 

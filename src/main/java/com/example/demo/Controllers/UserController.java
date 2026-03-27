@@ -51,9 +51,11 @@ public class UserController {
     }
 
     @PutMapping("/update")
-    public ResponseEntity<String> update(@RequestBody UserRequest request) {
+    public ResponseEntity<Map<String, String>> update(@RequestBody UserRequest request) {
         UserService.update(request);
-        return ResponseEntity.ok("Kullanıcı guncelleme basarılı.");
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Kullanıcı güncelleme başarılı.");
+        return ResponseEntity.ok(response);
 
     }
 

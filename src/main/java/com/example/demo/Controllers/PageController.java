@@ -6,7 +6,9 @@ package com.example.demo.Controllers;
 
 import com.example.demo.Bussiness.PageService;
 import com.example.demo.DTOs.PageResponse;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,10 +35,12 @@ public class PageController {
     }
     
     @PostMapping("/save")
-    public ResponseEntity<String> save(@RequestBody PageResponse pageResponse) {
+    public ResponseEntity<Map<String, String>> save(@RequestBody PageResponse pageResponse) {
         pageService.savePage(pageResponse);
-        return ResponseEntity.ok("Not olusturma basarılı.");
-        
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Not oluşturma başarılı.");
+        return ResponseEntity.ok(response);
+
     }
     
     @GetMapping("/my-list")
@@ -46,16 +50,20 @@ public class PageController {
     }
     
     @PutMapping("/update/{id}")
-    public ResponseEntity<String> updatePage(@PathVariable Long id, @RequestBody PageResponse dto) {
+    public ResponseEntity<Map<String, String>> updatePage(@PathVariable Long id, @RequestBody PageResponse dto) {
         pageService.updatePage(id, dto);
-        return ResponseEntity.ok("Update basarlı.");
-        
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Update başarılı.");
+        return ResponseEntity.ok(response);
+
     }
     
     @DeleteMapping("/delete/{id}")
-    public ResponseEntity<String> delete(@PathVariable Long id) {
+    public ResponseEntity<Map<String, String>> delete(@PathVariable Long id) {
         pageService.deleteById(id);
-        return ResponseEntity.ok("Silme islemi basarılı. ");
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Silme işlemi başarılı.");
+        return ResponseEntity.ok(response);
     }
     
 }
