@@ -9,6 +9,7 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
@@ -17,10 +18,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
  * @author 2005m
  */
 @Configuration
-@EnableJpaAuditing
-class JpaConfig {
-    // Auditing aktif edildi.
-}
+
 
 @Entity
 @Table(name = "page")
@@ -48,6 +46,8 @@ public class Page {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id")
     private Group group;
+    @LastModifiedDate
+    private LocalDateTime lastUpdateDate;
 
     public Page(String title, String content) {
         this.title = title;
@@ -96,7 +96,6 @@ public class Page {
     public void setLastUpdateDate(LocalDateTime lastUpdateDate) {
         this.lastUpdateDate = lastUpdateDate;
     }
-    private LocalDateTime lastUpdateDate;
 
     /**
      * @return the user

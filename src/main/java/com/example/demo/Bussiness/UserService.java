@@ -14,6 +14,7 @@ import com.example.demo.DataAccess.UserRepository;
 import com.example.demo.Entities.User;
 import java.util.Optional;
 import org.springframework.data.rest.webmvc.ResourceNotFoundException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,10 +38,15 @@ public class UserService {
         this.passwordEncoder = passwordEncoder;
     }
 
+    private User getAuthanticatedUser() {
+        String eMail = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByEMail(eMail).orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + eMail));
+    }
+
     @Transactional
     public void register(UserRequest userRequest) {
-        User user=mapper.toEntity(userRequest);
-        
+        User user = mapper.toEntity(userRequest);
+
         if (userRepository.existsByEMail(user.geteMail())) {
             throw new RuntimeException("This User Already Existed.");
         }
@@ -50,7 +56,6 @@ public class UserService {
         userRepository.save(user);
 
     }
-
 
     @Transactional
     public LoginResponse logIn(LoginRequest request) {
@@ -64,7 +69,7 @@ public class UserService {
             return response;
 
         }
-       throw new RuntimeException("Hatalı şifre ya da e-posta!");
+        throw new RuntimeException("Hatalı şifre ya da e-posta!");
 
     }
 
@@ -79,11 +84,13 @@ public class UserService {
     }
 
     @Transactional//tamam
-    public void update(UserResponse ur) {
-        User originUser = userRepository.findById(ur.getId()).orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        User updatedUser = mapper.updateEntityWithResponse(originUser, ur);
+    public void update(UserRequest ur) {
+      
+            User originUser = getAuthanticatedUser();
+            User updatedUser = mapper.updateEntityWithRequest(originUser, ur);
 
-        userRepository.save(updatedUser);
+            userRepository.save(updatedUser);
+        
 
     }
 

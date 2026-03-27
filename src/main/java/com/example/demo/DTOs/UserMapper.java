@@ -29,8 +29,8 @@ public class UserMapper implements IMapper<UserResponse, User> {
 
     }
 
-    @Override
-    public User updateEntityWithResponse(User existingUser, UserResponse dto) {
+   
+    public User updateEntityWithRequest(User existingUser, UserRequest dto) {
         existingUser.setName(dto.getName());
         existingUser.seteMail(dto.geteMail());
         existingUser.setSurName(dto.getSurName());

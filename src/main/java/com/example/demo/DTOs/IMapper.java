@@ -11,7 +11,7 @@ package com.example.demo.DTOs;
 public interface IMapper <Response,Entity>{
     
     Response toResponse(Entity e);
-    Entity updateEntityWithResponse(Entity e,Response r);
+    
     
     
     
