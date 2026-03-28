@@ -12,6 +12,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
@@ -21,7 +22,8 @@ import org.springframework.security.web.SecurityFilterChain;
  */
 //COnfigurations for Spring Security
 @Configuration
-public class Config {
+@EnableWebSecurity
+public class SecurityConfig {
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
@@ -36,10 +38,11 @@ public class Config {
         http
                 .csrf(csrf -> csrf.disable()) // Mobil uygulamalar için CSRF'i kapatıyoruz
                 .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/users/register", "/api/users/login").permitAll() // Kayıt ve giriş herkese açık
-                .anyRequest().authenticated() // Geri kalan her şey şifre/token istesin
-                )
-                .addFilterBefore(jwtFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
+                .requestMatchers("/api/auth/**").permitAll() // 'auth' ile başlayan her şeye izin ver
+
+                //.anyRequest().authenticated() // Geri kalan her şey şifre/token istesin
+                );
+                //.addFilterBefore(jwtFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 }

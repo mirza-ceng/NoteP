@@ -26,33 +26,35 @@ import java.util.Map;
 @RequestMapping("/api/auth")
 public class UserController {
 
-    private final UserService UserService;
+    private final UserService userService;
 
-    public UserController(UserService UserService) {
-        this.UserService = UserService;
+    public UserController(UserService userService) {
+        this.userService = userService;
     }
 
     @PostMapping("/register")
     public ResponseEntity<Map<String, String>> register(
             @RequestBody UserRequest userRequest
-    ) {
-        UserService.register(userRequest);
+    ) {  
+        System.out.println("Kayıt isteği geldi: " + userRequest.geteMail());
+        userService.register(userRequest);
         Map<String, String> response = new HashMap<>();
         response.put("message", "Kullanıcı oluşturuldu.");
+      System.out.println("Kayıt isteği cevaplandı: " + userRequest.geteMail());
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/login")
     public ResponseEntity<String> login(@RequestBody LoginRequest loginRequest) {
 
-        String token = UserService.logIn(loginRequest).getToken();
+        String token = userService.logIn(loginRequest).getToken();
         return ResponseEntity.ok(token);
 
     }
 
     @PutMapping("/update")
     public ResponseEntity<Map<String, String>> update(@RequestBody UserRequest request) {
-        UserService.update(request);
+        userService.update(request);
         Map<String, String> response = new HashMap<>();
         response.put("message", "Kullanıcı güncelleme başarılı.");
         return ResponseEntity.ok(response);
