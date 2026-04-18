@@ -8,9 +8,7 @@ import com.example.demo.AuthenticationElements.JWTFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -20,9 +18,10 @@ import org.springframework.security.web.SecurityFilterChain;
  *
  * @author 2005m
  */
-//COnfigurations for Spring Security
+//Configurations for Spring Security
 @Configuration
 @EnableWebSecurity
+@Order(1)
 public class SecurityConfig {
 
     @Bean
@@ -37,12 +36,12 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable()) // Mobil uygulamalar için CSRF'i kapatıyoruz
+                .httpBasic(httpBasic -> httpBasic.disable()) // Basic auth'u devre dışı bırak
                 .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll() // 'auth' ile başlayan her şeye izin ver
-
-                //.anyRequest().authenticated() // Geri kalan her şey şifre/token istesin
-                );
-                //.addFilterBefore(jwtFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
+                .anyRequest().authenticated() // Geri kalan her şey şifre/token istesin
+                )
+                .addFilterBefore(jwtFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 }

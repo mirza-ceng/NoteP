@@ -36,11 +36,11 @@ public class UserController {
     public ResponseEntity<Map<String, String>> register(
             @RequestBody UserRequest userRequest
     ) {  
-        System.out.println("Kayıt isteği geldi: " + userRequest.geteMail());
+        
         userService.register(userRequest);
         Map<String, String> response = new HashMap<>();
         response.put("message", "Kullanıcı oluşturuldu.");
-      System.out.println("Kayıt isteği cevaplandı: " + userRequest.geteMail());
+      
         return ResponseEntity.ok(response);
     }
 

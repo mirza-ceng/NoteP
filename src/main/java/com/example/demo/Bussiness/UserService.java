@@ -12,9 +12,13 @@ import com.example.demo.DTOs.UserRequest;
 import com.example.demo.DTOs.UserResponse;
 import com.example.demo.DataAccess.UserRepository;
 import com.example.demo.Entities.User;
+import java.util.ArrayList;
 import java.util.Optional;
 import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
  * @author 2005m
  */
 @Service
-public class UserService {
+public class UserService implements UserDetailsService {
 
     private final UserRepository userRepository;
     private final UserMapper mapper;
@@ -45,10 +49,9 @@ public class UserService {
 
     @Transactional
     public void register(UserRequest userRequest) {
+        System.out.println("servis çalıştı..");
         try {
             User user = mapper.toEntity(userRequest);
-            System.out.println("User created: " + user.geteMail());
-
             if (userRepository.existsByEMail(user.geteMail())) {
                 throw new RuntimeException("This User Already Existed.");
             }
@@ -56,9 +59,8 @@ public class UserService {
             String encodedPassword = passwordEncoder.encode(password);
             user.setPassword(encodedPassword);
             User savedUser = userRepository.save(user);
-            System.out.println("User saved: " + savedUser.geteMail() + " ID: " + savedUser.getId());
+
         } catch (Exception e) {
-            System.out.println("Exception in register: " + e.getMessage());
             throw e;
         }
 
@@ -92,13 +94,18 @@ public class UserService {
 
     @Transactional//tamam
     public void update(UserRequest ur) {
-      
-            User originUser = getAuthanticatedUser();
-            User updatedUser = mapper.updateEntityWithRequest(originUser, ur);
 
-            userRepository.save(updatedUser);
-        
+        User originUser = getAuthanticatedUser();
+        User updatedUser = mapper.updateEntityWithRequest(originUser, ur);
 
+        userRepository.save(updatedUser);
+
+    }
+
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        User user = userRepository.findByEMail(username).orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        return new org.springframework.security.core.userdetails.User(user.geteMail(), user.getPassword(), new ArrayList<>());
     }
 
 }
