@@ -67,10 +67,13 @@ package "Bussiness" {
         - userRepository: UserRepository
         - userMapper: UserMapper
         - pageMapper: PageMapper
-        + savePage(pageResponse: PageResponse)
+        + savePage(pageRequest: PageRequest)
         + getMyPages(): List<PageResponse>
         + updatePage(id: Long, pageResponse: PageResponse)
         + deleteById(id: Long)
+    }
+
+    class GroupService {
     }
 }
 
@@ -87,6 +90,11 @@ package "DTOs" {
         - name: String
         - surName: String
         - eMail: String
+    }
+
+    class PageRequest {
+        - title: String
+        - content: String
     }
 
     class PageResponse {
@@ -136,7 +144,7 @@ package "Controllers" {
 
     class PageController {
         - pageService: PageService
-        + save(pageResponse: PageResponse): ResponseEntity<Map<String, String>>
+        + save(pageRequest: PageRequest): ResponseEntity<Map<String, String>>
         + getMyPages(): ResponseEntity<List<PageResponse>>
         + updatePage(id: Long, pageResponse: PageResponse): ResponseEntity<Map<String, String>>
         + delete(id: Long): ResponseEntity<Map<String, String>>
@@ -177,7 +185,7 @@ package "AuthenticationElements" {
 }
 
 package "Config" {
-    class Config {
+    class SecurityConfig {
         + passwordEncoder(): BCryptPasswordEncoder
         + filterChain(http: HttpSecurity): SecurityFilterChain
     }
@@ -213,7 +221,7 @@ Page --> Group : belongs to
 GlobalExceptionHandler --> Controllers : advises
 
 JWTFilter --> JWTUtil
-Config --> BCryptPasswordEncoder
-Config --> JWTFilter
+SecurityConfig --> BCryptPasswordEncoder
+SecurityConfig --> JWTFilter
 
 @enduml
