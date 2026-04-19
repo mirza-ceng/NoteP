@@ -4,12 +4,14 @@
  */
 package com.example.demo.AuthenticationElements;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 /**
  *
  * @author 2005m
  */
 public class LoginRequest {
-
+@JsonProperty("eMail")
     private String eMail;
     private String password;
 

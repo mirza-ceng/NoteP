@@ -5,6 +5,7 @@
 package com.example.demo.Controllers;
 
 import com.example.demo.Bussiness.PageService;
+import com.example.demo.DTOs.PageRequest;
 import com.example.demo.DTOs.PageResponse;
 import java.util.HashMap;
 import java.util.List;
@@ -35,8 +36,8 @@ public class PageController {
     }
     
     @PostMapping("/save")
-    public ResponseEntity<Map<String, String>> save(@RequestBody PageResponse pageResponse) {
-        pageService.savePage(pageResponse);
+    public ResponseEntity<Map<String, String>> save(@RequestBody PageRequest pageRequest) {
+        pageService.savePage(pageRequest);
         Map<String, String> response = new HashMap<>();
         response.put("message", "Not oluşturma başarılı.");
         return ResponseEntity.ok(response);

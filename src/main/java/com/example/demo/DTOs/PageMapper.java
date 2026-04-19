@@ -36,8 +36,9 @@ public class PageMapper implements IMapper<PageResponse, Page> {
     }
 
     
-    public Page toEntity(PageResponse r) {
+    public Page toEntity(PageRequest r) {
         Page page = new Page(r.getTitle(), r.getContent());
+        
         return page;
 
     }

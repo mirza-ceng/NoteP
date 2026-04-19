@@ -52,6 +52,7 @@ public class Page {
     public Page(String title, String content) {
         this.title = title;
         this.content = content;
+        this.createdDate=LocalDateTime.now();
     }
 
     public Page() {

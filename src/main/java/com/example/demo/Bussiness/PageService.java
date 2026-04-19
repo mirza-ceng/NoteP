@@ -5,6 +5,7 @@
 package com.example.demo.Bussiness;
 
 import com.example.demo.DTOs.PageMapper;
+import com.example.demo.DTOs.PageRequest;
 import com.example.demo.DTOs.PageResponse;
 import com.example.demo.DTOs.UserMapper;
 import com.example.demo.DataAccess.PageRepository;
@@ -49,10 +50,12 @@ public class PageService {
     }
     
     @Transactional
-    public void savePage(PageResponse dto) {
+    public void savePage(PageRequest dto) {
         
         User u = getAuthanticatedUser();
-        Page page = pageMapper.toEntity(dto);
+        //Page page = pageMapper.toEntity(dto);
+        Page page=new Page(dto.getTitle(),dto.getContent());
+        page.setUser(null);
         page.setUser(u);
         pageRepository.save(page);
         
