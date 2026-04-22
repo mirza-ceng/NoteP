@@ -42,6 +42,14 @@ public class Group {
     public Group() {
     }
 
+    public List<Page> getPages() {
+        return pages;
+    }
+
+    public void setPages(List<Page> pages) {
+        this.pages = pages;
+    }
+
     public Long getId() {
         return id;
     }
