@@ -28,13 +28,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/pages")
 public class PageController {
-    
+
     private final PageService pageService;
-    
+
     public PageController(PageService pageService) {
         this.pageService = pageService;
     }
-    
+
     @PostMapping("/save")
     public ResponseEntity<Map<String, String>> save(@RequestBody PageRequest pageRequest) {
         pageService.savePage(pageRequest);
@@ -43,13 +43,13 @@ public class PageController {
         return ResponseEntity.ok(response);
 
     }
-    
+
     @GetMapping("/my-list")
     public ResponseEntity<List<PageResponse>> getMyPages() {
         return ResponseEntity.ok(pageService.getMyPages());
-        
+
     }
-    
+
     @PutMapping("/update/{id}")
     public ResponseEntity<Map<String, String>> updatePage(@PathVariable Long id, @RequestBody PageResponse dto) {
         pageService.updatePage(id, dto);
@@ -58,7 +58,7 @@ public class PageController {
         return ResponseEntity.ok(response);
 
     }
-    
+
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<Map<String, String>> delete(@PathVariable Long id) {
         pageService.deleteById(id);
@@ -66,5 +66,22 @@ public class PageController {
         response.put("message", "Silme işlemi başarılı.");
         return ResponseEntity.ok(response);
     }
-    
+
+    @PutMapping("/{pageId}/add-to-group/{groupId}")
+    public ResponseEntity<Map<String, String>> addToGroup(@PathVariable Long pageId, @PathVariable Long groupId) {
+        pageService.addToGroup(pageId, groupId);
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Not başarıyla gruba dahil edildi.");
+        return ResponseEntity.ok(response);
+
+    }
+
+    @PutMapping("/{pageId}/remove-from-group")
+    public ResponseEntity<Map<String, String>> removeFromGroup(@PathVariable Long pageId) {
+        pageService.removeFromGroup(pageId);
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Not gruptan cıkarıldı.");
+        return ResponseEntity.ok(response);
+    }
+
 }

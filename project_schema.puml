@@ -74,6 +74,18 @@ package "Bussiness" {
     }
 
     class GroupService {
+        - groupRepository: GroupRepository
+        - pageRepository: PageRepository
+        - userRepository: UserRepository
+        - userMapper: UserMapper
+        - pageMapper: PageMapper
+        - groupMapper: GroupMapper
+        - passwordEncoder: BCryptPasswordEncoder
+        + createGroup(groupRequest: GroupRequest)
+        + getMyGroups(): List<GroupResponse>
+        + getGroupById(id: Long): GroupResponse
+        + joinGroup(groupId: Long, joinRequest: JoinRequest)
+        + deleteById(id: Long)
     }
 }
 
@@ -132,6 +144,27 @@ package "DTOs" {
         + toEntity(pageResponse: PageResponse): Page
         + updateEntityWithResponse(page: Page, pageResponse: PageResponse): Page
     }
+
+    class GroupRequest {
+        - name: String
+        - password: String
+    }
+
+    class GroupResponse {
+        - id: Long
+        - name: String
+        - members: List<User>
+        - pages: List<Page>
+    }
+
+    class JoinRequest {
+        - password: String
+    }
+
+    class GroupMapper implements IMapper<GroupResponse, Group> {
+        + toResponse(group: Group): GroupResponse
+        + toEntity(groupRequest: GroupRequest): Group
+    }
 }
 
 package "Controllers" {
@@ -148,6 +181,14 @@ package "Controllers" {
         + getMyPages(): ResponseEntity<List<PageResponse>>
         + updatePage(id: Long, pageResponse: PageResponse): ResponseEntity<Map<String, String>>
         + delete(id: Long): ResponseEntity<Map<String, String>>
+    }
+
+    class GroupController {
+        - groupService: GroupService
+        + create(groupRequest: GroupRequest): ResponseEntity<Map<String, String>>
+        + getMyGroups(): ResponseEntity<List<GroupResponse>>
+        + getGroupById(id: Long): ResponseEntity<GroupResponse>
+        + join(id: Long, joinRequest: JoinRequest): ResponseEntity<Map<String, String>>
     }
 }
 
@@ -203,12 +244,25 @@ PageService --> UserRepository
 PageService --> UserMapper
 PageService --> PageMapper
 
+GroupController --> GroupService
+GroupService --> GroupRepository
+GroupService --> PageRepository
+GroupService --> UserRepository
+GroupService --> UserMapper
+GroupService --> PageMapper
+GroupService --> GroupMapper
+GroupService --> BCryptPasswordEncoder
+
 UserMapper --> UserResponse
 UserMapper --> UserRequest
 UserMapper --> User
 
 PageMapper --> PageResponse
 PageMapper --> Page
+
+GroupMapper --> GroupResponse
+GroupMapper --> GroupRequest
+GroupMapper --> Group
 
 User --> Page : has many
 User --> Group : has many
