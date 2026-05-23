@@ -4,12 +4,14 @@
  */
 package com.example.demo.DTOs;
 
+import jakarta.validation.constraints.NotBlank;
+
 /**
  *
  * @author 2005m
  */
 public class JoinRequest {
-
+@NotBlank(message = "Pssword can not be empty!!")
     private String password;
 
     public JoinRequest(String password) {

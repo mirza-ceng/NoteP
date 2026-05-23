@@ -32,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class GroupService {
+//aaa
 
     private final BCryptPasswordEncoder passwordEncoder;
     private final PageRepository pageRepository;
@@ -82,13 +83,8 @@ public class GroupService {
 
         List<Group> groups = groupRepository.findByMembersId(getAuthanticatedUser().getId());
 
-        return groups.stream().map(
-                (Group item) -> new GroupResponse(
-                        item.getId(),
-                        item.getName(),
-                        null,
-                        null)
-        ).collect(Collectors.toList());
+        return groupMapper.toResponseList(groups);
+               
 
     }
 
@@ -102,15 +98,17 @@ public class GroupService {
         if (!isMember) {
             throw new RuntimeException("GUVENLIK IHLALI:Uyesı olmadıgınız bır grubun ıcerıgını goremezsınız!");
         }
-        return new GroupResponse(group.getId(),
+        GroupResponse groupResponse = new GroupResponse(group.getId(),
                 group.getName(),
-                group.getMembers(),
-                group.getPages());
+                userMapper.toResponseList(group.getMembers()),
+                pageMapper.toResponseList(group.getPages())
+        );
+        return groupResponse;
     }
 
     @Transactional
     public void joinGroup(Long groupId, JoinRequest joinReq) {
-        String password=joinReq.getPassword();
+        String password = joinReq.getPassword();
         Group group = groupRepository.findById(groupId).orElseThrow(() -> new RuntimeException("Grup Bulunamadı!"));
         User u = getAuthanticatedUser();
         if (group.getMembers().contains(u)) {

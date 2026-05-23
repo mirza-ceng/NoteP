@@ -8,6 +8,9 @@ import com.example.demo.DTOs.PageResponse;
 import com.example.demo.Entities.Page;
 import com.example.demo.Entities.User;
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 /**
@@ -26,8 +29,15 @@ public class PageMapper implements IMapper<PageResponse, Page> {
         return response;
     }
 
+    public List<PageResponse> toResponseList(List<Page> pageList) {
+        if (pageList == null) {
+            return Collections.emptyList();
+        }
+        return (List<PageResponse>) pageList.stream().map(this::toResponse).collect(Collectors.toList());
+        //page için tolist yapısını güncelle
+    }
    
-    public Page updateEntityWithResponse(Page existingPage, PageResponse dto) {
+    public Page updateEntityWithResponse(Page existingPage, PageRequest dto) {
         existingPage.setContent(dto.getContent());
         existingPage.setTitle(dto.getTitle());
         existingPage.setLastUpdateDate(LocalDateTime.now());

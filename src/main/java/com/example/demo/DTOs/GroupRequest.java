@@ -4,13 +4,17 @@
  */
 package com.example.demo.DTOs;
 
+import jakarta.validation.constraints.NotBlank;
+
 /**
  *
  * @author 2005m
  */
 public class GroupRequest {
-    
+
+    @NotBlank(message = "Group Name can not be empty")
     private String name;
+    @NotBlank(message = "Password can not be empty")
     private String password;
 
     public GroupRequest(String name, String password) {
@@ -33,7 +37,5 @@ public class GroupRequest {
     public void setPassword(String password) {
         this.password = password;
     }
-    
-    
-    
+
 }

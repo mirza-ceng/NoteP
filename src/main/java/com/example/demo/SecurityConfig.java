@@ -23,6 +23,7 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableWebSecurity
 @Order(1)
 public class SecurityConfig {
+    
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
@@ -38,6 +39,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable()) // Mobil uygulamalar için CSRF'i kapatıyoruz
                 .httpBasic(httpBasic -> httpBasic.disable()) // Basic auth'u devre dışı bırak
                 .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**", "/v3/api-docs.yaml").permitAll()
                 .requestMatchers("/api/auth/**").permitAll() // 'auth' ile başlayan her şeye izin ver
                 .anyRequest().authenticated() // Geri kalan her şey şifre/token istesin
                 )

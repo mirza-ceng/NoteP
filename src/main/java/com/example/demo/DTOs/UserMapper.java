@@ -7,6 +7,11 @@ package com.example.demo.DTOs;
 import com.example.demo.DTOs.UserResponse;
 import com.example.demo.DTOs.UserRequest;
 import com.example.demo.Entities.User;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
+import org.hibernate.mapping.Collection;
 import org.springframework.stereotype.Component;
 
 /**
@@ -29,7 +34,13 @@ public class UserMapper implements IMapper<UserResponse, User> {
 
     }
 
-   
+    public List<UserResponse> toResponseList(List<User> userList) {
+        if (userList == null) {
+            return Collections.emptyList();
+        }
+        return (List<UserResponse>) userList.stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
     public User updateEntityWithRequest(User existingUser, UserRequest dto) {
         existingUser.setName(dto.getName());
         existingUser.seteMail(dto.geteMail());
