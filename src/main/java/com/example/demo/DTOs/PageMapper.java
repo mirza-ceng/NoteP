@@ -37,7 +37,7 @@ public class PageMapper implements IMapper<PageResponse, Page> {
         //page için tolist yapısını güncelle
     }
    
-    public Page updateEntityWithResponse(Page existingPage, PageResponse dto) {
+    public Page updateEntityWithResponse(Page existingPage, PageRequest dto) {
         existingPage.setContent(dto.getContent());
         existingPage.setTitle(dto.getTitle());
         existingPage.setLastUpdateDate(LocalDateTime.now());

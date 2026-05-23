@@ -52,7 +52,7 @@ public class PageController {
     }
 
     @PutMapping("/update/{id}")
-    public ResponseEntity<Map<String, String>> updatePage(@PathVariable Long id, @Valid @RequestBody PageResponse dto) {
+    public ResponseEntity<Map<String, String>> updatePage(@PathVariable Long id, @Valid @RequestBody PageRequest dto) {
         pageService.updatePage(id, dto);
         Map<String, String> response = new HashMap<>();
         response.put("message", "Update başarılı.");
