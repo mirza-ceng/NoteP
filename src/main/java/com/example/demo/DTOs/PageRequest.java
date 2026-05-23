@@ -4,12 +4,19 @@
  */
 package com.example.demo.DTOs;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
 /**
  *
  * @author 2005m
  */
 public class PageRequest {
+    @NotBlank(message = "Not başlığı boş olamaz!")
+    @Size(max = 100, message = "Not başlığı en fazla 100 karakter olabilir!")
      private String title;
+    @NotBlank(message = "Not içeriği boş olamaz!")
+    @Size(max = 10000, message = "Not içeriği çok uzun! En fazla 10.000 karakter yazabilirsiniz.")  
     private String content;
 
     public PageRequest(String title, String content) {

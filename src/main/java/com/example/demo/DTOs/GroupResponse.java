@@ -17,10 +17,11 @@ public class GroupResponse {
 
     private Long id;
     private String name;
-    private List<User> members;
-     private List<Page> pages;
+   private List<UserResponse> members;
+private List<PageResponse> pages;
 
-    public GroupResponse(Long id, String name, List<User> members, List<Page> pages) {
+
+    public GroupResponse(Long id, String name, List<UserResponse> members, List<PageResponse> pages) {
         this.id = id;
         this.name = name;
         this.members = members;
@@ -43,19 +44,19 @@ public class GroupResponse {
         this.name = name;
     }
 
-    public List<User> getMembers() {
+    public List<UserResponse> getMembers() {
         return members;
     }
 
-    public void setMembers(List<User> members) {
+    public void setMembers(List<UserResponse> members) {
         this.members = members;
     }
 
-    public List<Page> getPages() {
+    public List<PageResponse> getPages() {
         return pages;
     }
 
-    public void setPages(List<Page> pages) {
+    public void setPages(List<PageResponse> pages) {
         this.pages = pages;
     }
 

@@ -7,6 +7,7 @@ package com.example.demo.Controllers;
 import com.example.demo.Bussiness.PageService;
 import com.example.demo.DTOs.PageRequest;
 import com.example.demo.DTOs.PageResponse;
+import jakarta.validation.Valid;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +37,7 @@ public class PageController {
     }
 
     @PostMapping("/save")
-    public ResponseEntity<Map<String, String>> save(@RequestBody PageRequest pageRequest) {
+    public ResponseEntity<Map<String, String>> save(@Valid @RequestBody PageRequest pageRequest) {
         pageService.savePage(pageRequest);
         Map<String, String> response = new HashMap<>();
         response.put("message", "Not oluşturma başarılı.");
@@ -51,7 +52,7 @@ public class PageController {
     }
 
     @PutMapping("/update/{id}")
-    public ResponseEntity<Map<String, String>> updatePage(@PathVariable Long id, @RequestBody PageResponse dto) {
+    public ResponseEntity<Map<String, String>> updatePage(@PathVariable Long id, @Valid @RequestBody PageResponse dto) {
         pageService.updatePage(id, dto);
         Map<String, String> response = new HashMap<>();
         response.put("message", "Update başarılı.");

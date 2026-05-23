@@ -15,6 +15,7 @@ import com.example.demo.DTOs.GroupResponse;
 import com.example.demo.DTOs.JoinRequest;
 import com.example.demo.DTOs.PageRequest;
 import com.example.demo.DTOs.PageResponse;
+import jakarta.validation.Valid;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,7 +42,7 @@ public class GroupController {
     }
 
     @PostMapping("/create")
-    public ResponseEntity<Map<String, String>> create(@RequestBody GroupRequest groupRequest) {
+    public ResponseEntity<Map<String, String>> create(@Valid @RequestBody GroupRequest groupRequest) {
         groupService.createGroup(groupRequest);
         Map<String, String> response = new HashMap<>();
         response.put("message", "Grup Olusturma Basarılı!");
@@ -62,7 +63,7 @@ public class GroupController {
     }
 
     @PostMapping("/join/{id}")
-    public ResponseEntity<Map<String, String>> join(@PathVariable Long id, @RequestBody JoinRequest joinReq) {
+    public ResponseEntity<Map<String, String>> join(@PathVariable Long id, @Valid @RequestBody JoinRequest joinReq) {
         groupService.joinGroup(id, joinReq);
         Map<String, String> response = new HashMap<>();
         response.put("message", "Gruba Katılım Basarılı!");
