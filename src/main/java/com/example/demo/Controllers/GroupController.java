@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/groups")
+@CrossOrigin
 public class GroupController {
 
     private final GroupService groupService;
@@ -69,5 +71,8 @@ public class GroupController {
         response.put("message", "Gruba Katılım Basarılı!");
         return ResponseEntity.ok(response);
 
+        
     }
+    
+    //add getGroupPages
 }
