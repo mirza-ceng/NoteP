@@ -71,5 +71,8 @@ public class GroupController {
         response.put("message", "Gruba Katılım Basarılı!");
         return ResponseEntity.ok(response);
 
+        
     }
+    
+    //add getGroupPages
 }
