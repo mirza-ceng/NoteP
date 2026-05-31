@@ -97,7 +97,9 @@ public class UserService implements UserDetailsService {
     public void update(UserUpdateRequest ur) {
 
         User originUser = getAuthanticatedUser();
-        originUser.setPassword(ur.getPassword());
+         String encodedPassword = passwordEncoder.encode(ur.getPassword());
+        originUser.setPassword(encodedPassword);
+        
        // User updatedUser = mapper.updateEntityWithRequest(originUser, ur);
 
         userRepository.save(originUser);
