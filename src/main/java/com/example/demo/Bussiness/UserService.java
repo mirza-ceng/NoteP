@@ -10,6 +10,7 @@ import com.example.demo.AuthenticationElements.LoginResponse;
 import com.example.demo.DTOs.UserMapper;
 import com.example.demo.DTOs.UserRequest;
 import com.example.demo.DTOs.UserResponse;
+import com.example.demo.DTOs.UserUpdateRequest;
 import com.example.demo.DataAccess.UserRepository;
 import com.example.demo.Entities.User;
 import java.util.ArrayList;
@@ -93,7 +94,7 @@ public class UserService implements UserDetailsService {
     }
 
     @Transactional//tamam
-    public void update(UserRequest ur) {
+    public void update(UserUpdateRequest ur) {
 
         User originUser = getAuthanticatedUser();
         User updatedUser = mapper.updateEntityWithRequest(originUser, ur);

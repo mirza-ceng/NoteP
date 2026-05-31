@@ -7,6 +7,7 @@ package com.example.demo.Controllers;
 import com.example.demo.AuthenticationElements.LoginRequest;
 import com.example.demo.Bussiness.UserService;
 import com.example.demo.DTOs.UserRequest;
+import com.example.demo.DTOs.UserUpdateRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -55,7 +56,7 @@ public class UserController {
     }
 
     @PutMapping("/update")
-    public ResponseEntity<Map<String, String>> update(@RequestBody UserRequest request) {
+    public ResponseEntity<Map<String, String>> update(@RequestBody UserUpdateRequest request) {
         userService.update(request);
         Map<String, String> response = new HashMap<>();
         response.put("message", "Kullanıcı güncelleme başarılı.");
