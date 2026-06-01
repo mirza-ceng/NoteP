@@ -93,12 +93,11 @@ public class UserService implements UserDetailsService {
         userRepository.deleteById(id);
     }
 
-    @Transactional
     public void update(UserUpdateRequest ur) {
 
-        User originUser = getAuthanticatedUser();
+        String eMail = SecurityContextHolder.getContext().getAuthentication().getName();
         String encodedPassword = passwordEncoder.encode(ur.getPassword());
-        userRepository.updatePassword(originUser.getId(), encodedPassword);
+        userRepository.updatePasswordByEmail(eMail, encodedPassword);
 
     }
 
