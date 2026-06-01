@@ -93,16 +93,12 @@ public class UserService implements UserDetailsService {
         userRepository.deleteById(id);
     }
 
-    @Transactional//tamam
+    @Transactional
     public void update(UserUpdateRequest ur) {
 
         User originUser = getAuthanticatedUser();
-         String encodedPassword = passwordEncoder.encode(ur.getPassword());
-        originUser.setPassword(encodedPassword);
-        
-       // User updatedUser = mapper.updateEntityWithRequest(originUser, ur);
-
-        userRepository.save(originUser);
+        String encodedPassword = passwordEncoder.encode(ur.getPassword());
+        userRepository.updatePassword(originUser.getId(), encodedPassword);
 
     }
 
