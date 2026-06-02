@@ -4,6 +4,8 @@
  */
 package com.example.demo.DTOs;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 /**
  *
  * @author 2005m
@@ -70,6 +72,7 @@ public class UserResponse {
     /**
      * @return the eMail
      */
+    @JsonProperty("eMail")
     public String geteMail() {
         return eMail;
     }
