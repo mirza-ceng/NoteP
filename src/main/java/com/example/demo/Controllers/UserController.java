@@ -7,6 +7,7 @@ package com.example.demo.Controllers;
 import com.example.demo.AuthenticationElements.LoginRequest;
 import com.example.demo.Bussiness.UserService;
 import com.example.demo.DTOs.UserRequest;
+import com.example.demo.DTOs.UserResponse;
 import com.example.demo.DTOs.UserUpdateRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.HashMap;
 import java.util.Map;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
 
 /**
  *
@@ -38,12 +40,12 @@ public class UserController {
     @PostMapping("/register")
     public ResponseEntity<Map<String, String>> register(
             @RequestBody UserRequest userRequest
-    ) {  
-        
+    ) {
+
         userService.register(userRequest);
         Map<String, String> response = new HashMap<>();
         response.put("message", "Kullanıcı oluşturuldu.");
-      
+
         return ResponseEntity.ok(response);
     }
 
@@ -64,4 +66,8 @@ public class UserController {
 
     }
 
+    @GetMapping("/me")
+    public ResponseEntity<UserResponse> getProfile() {
+        return ResponseEntity.ok(userService.getProfile());
+    }
 }
