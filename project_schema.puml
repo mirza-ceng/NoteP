@@ -90,7 +90,6 @@ package "Bussiness" {
         + getMyGroups(): List<GroupResponse>
         + getGroupById(id: Long): GroupResponse
         + joinGroup(groupId: Long, joinRequest: JoinRequest)
-        + deleteById(id: Long)
     }
 }
 
@@ -136,7 +135,6 @@ package "DTOs" {
         + toRequest(u: User): UserRequest
         + toResponseList(userList: List<User>): List<UserResponse>
         + toEntity(userRequest: UserRequest): User
-        + updateEntityWithRequest(user: User, userUpdateRequest: UserUpdateRequest): User
     }
 
     class PageMapper implements IMapper<PageResponse, Page> {
