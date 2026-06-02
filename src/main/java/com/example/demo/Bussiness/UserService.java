@@ -92,7 +92,7 @@ public class UserService implements UserDetailsService {
     public void deleteById(long id) {
         userRepository.deleteById(id);
     }
-
+@Transactional
     public void update(UserUpdateRequest ur) {
 
         String eMail = SecurityContextHolder.getContext().getAuthentication().getName();
