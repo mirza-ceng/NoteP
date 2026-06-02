@@ -92,13 +92,20 @@ public class UserService implements UserDetailsService {
     public void deleteById(long id) {
         userRepository.deleteById(id);
     }
-@Transactional
+
+    @Transactional
     public void update(UserUpdateRequest ur) {
 
         String eMail = SecurityContextHolder.getContext().getAuthentication().getName();
         String encodedPassword = passwordEncoder.encode(ur.getPassword());
         userRepository.updatePasswordByEmail(eMail, encodedPassword);
 
+    }
+
+    @Transactional
+    public UserResponse getProfile() {
+        User u = getAuthanticatedUser();
+        return userRepository.findById(u.getId()).map(mapper::toResponse).orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
     @Override
