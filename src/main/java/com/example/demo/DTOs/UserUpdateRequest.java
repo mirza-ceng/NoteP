@@ -17,6 +17,9 @@ public class UserUpdateRequest {
     @Size(min = 6, max = 100, message = "Şifre en az 6, en fazla 100 karakter olmalıdır!")
     private String password;
 
+    public UserUpdateRequest() {
+    }
+
     public UserUpdateRequest(String password) {
         this.password = password;
     }
