@@ -10,6 +10,7 @@ import com.example.demo.AuthenticationElements.LoginResponse;
 import com.example.demo.DTOs.UserMapper;
 import com.example.demo.DTOs.UserRequest;
 import com.example.demo.DTOs.UserResponse;
+import com.example.demo.DTOs.UserUpdateRequest;
 import com.example.demo.DataAccess.UserRepository;
 import com.example.demo.Entities.User;
 import java.util.ArrayList;
@@ -91,14 +92,12 @@ public class UserService implements UserDetailsService {
     public void deleteById(long id) {
         userRepository.deleteById(id);
     }
+@Transactional
+    public void update(UserUpdateRequest ur) {
 
-    @Transactional//tamam
-    public void update(UserRequest ur) {
-
-        User originUser = getAuthanticatedUser();
-        User updatedUser = mapper.updateEntityWithRequest(originUser, ur);
-
-        userRepository.save(updatedUser);
+        String eMail = SecurityContextHolder.getContext().getAuthentication().getName();
+        String encodedPassword = passwordEncoder.encode(ur.getPassword());
+        userRepository.updatePasswordByEmail(eMail, encodedPassword);
 
     }
 

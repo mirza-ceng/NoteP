@@ -41,13 +41,12 @@ public class UserMapper implements IMapper<UserResponse, User> {
         return (List<UserResponse>) userList.stream().map(this::toResponse).collect(Collectors.toList());
     }
 
-    public User updateEntityWithRequest(User existingUser, UserRequest dto) {
-        existingUser.setName(dto.getName());
-        existingUser.seteMail(dto.geteMail());
-        existingUser.setSurName(dto.getSurName());
-        return existingUser;
-
-    }
+//    public User updateEntityWithRequest(User existingUser, UserUpdateRequest dto) {
+//       
+//        existingUser.setPassword(dto.getPassword());
+//        return existingUser;
+//
+//    }
 
     public User toEntity(UserRequest r) {
         User u = new User(r.getName(), r.getSurName(), r.geteMail(), r.getPassword());
