@@ -22,7 +22,7 @@ NoteP, Spring Boot ile gelistirilmis JWT tabanli bir not ve grup yonetimi backen
 - Spring Security
 - Spring Data JPA
 - Spring Data REST
-- MySQL
+- MySQL / PostgreSQL
 - JJWT
 - Springdoc OpenAPI / Swagger UI
 - Maven
@@ -31,7 +31,7 @@ NoteP, Spring Boot ile gelistirilmis JWT tabanli bir not ve grup yonetimi backen
 
 - Java 21 veya uzeri
 - Maven Wrapper proje icinde mevcut oldugu icin ayrica Maven kurulu olmasi zorunlu degildir
-- MySQL Server
+- MySQL veya PostgreSQL Server
 
 ## Konfigurasyon
 
@@ -47,6 +47,8 @@ server.port=${PORT:8081}
 jwt.secretSTR=...
 springdoc.enable-data-rest=false
 ```
+
+Not: Render gibi ortamlarda PostgreSQL kullanilir. O durumda `spring.datasource.url`, `spring.datasource.username` ve `spring.datasource.password` degerleri environment variable olarak verilmelidir.
 
 Guvenlik notu: Gercek ortamda veritabani sifresi ve JWT secret gibi hassas degerleri dogrudan repo icinde tutmak yerine environment variable veya secret manager ile yonetmek daha dogrudur.
 
@@ -71,6 +73,8 @@ http://localhost:8081
 ```
 
 Not: Root `/` endpoint'i tanimli olmadigi ve guvenlik altinda oldugu icin `http://localhost:8081/` adresinde 403 gorulebilir. API ve Swagger endpointleri kullanilmalidir.
+
+Proje [Render](https://render.com) uzerinde PostgreSQL ile deploy edilmistir. Degisiklikler GitHub'a pushlandiktan sonra otomatik olarak derlenir ve deploy edilir.
 
 ## Swagger / OpenAPI
 
