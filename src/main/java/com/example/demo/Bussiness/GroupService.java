@@ -83,7 +83,7 @@ public class GroupService {
     @Transactional
     public List<GroupResponse> getMyGroups() {// use for just show groups!
 
-        List<Group> groups = groupRepository.findByMemberId(getAuthanticatedUser().getId());
+        List<Group> groups = groupRepository.findByMembersId(getAuthanticatedUser().getId());
 
         return groupMapper.toResponseList(groups);
 
