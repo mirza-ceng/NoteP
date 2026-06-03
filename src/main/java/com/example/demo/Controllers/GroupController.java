@@ -64,15 +64,22 @@ public class GroupController {
         return ResponseEntity.ok(groupService.getGroupById(id));
     }
 
-    @PostMapping("/join/{id}")
-    public ResponseEntity<Map<String, String>> join(@PathVariable Long id, @Valid @RequestBody JoinRequest joinReq) {
-        groupService.joinGroup(id, joinReq);
+    @PostMapping("/join")
+    public ResponseEntity<Map<String, String>> join( @Valid @RequestBody JoinRequest joinReq) {
+        groupService.joinGroup(joinReq);
         Map<String, String> response = new HashMap<>();
         response.put("message", "Gruba Katılım Basarılı!");
         return ResponseEntity.ok(response);
 
-        
     }
-    
+
+    @GetMapping("/{id}/pages")
+    public ResponseEntity<List<PageResponse>> getPages(
+            @PathVariable Long id
+    ) {
+
+        return ResponseEntity.ok(groupService.getPages(id));
+
+    }
     //add getGroupPages
 }

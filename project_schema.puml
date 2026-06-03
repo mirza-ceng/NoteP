@@ -546,5 +546,6 @@ endlegend
 TO DO LİST:
 profil bilgileri güncellendiinde,o usera ait pagelerinde(ve grupların) componentleri güncellenmeli,//user not found with email hatası
 gruba not ekleme ve silme
-profil güncellemeye ayar çek,
 getpagesofgroup endpointi ekle
+id parametreli endpointleri gözden geçir
+repository işlemlerinde aynı isimli değişkenler birden fazla bulunmasın(name,email)

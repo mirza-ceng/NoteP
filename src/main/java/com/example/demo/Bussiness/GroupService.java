@@ -9,11 +9,13 @@ import com.example.demo.DTOs.GroupRequest;
 import com.example.demo.DTOs.GroupResponse;
 import com.example.demo.DTOs.JoinRequest;
 import com.example.demo.DTOs.PageMapper;
+import com.example.demo.DTOs.PageResponse;
 import com.example.demo.DTOs.UserMapper;
 import com.example.demo.DataAccess.GroupRepository;
 import com.example.demo.DataAccess.PageRepository;
 import com.example.demo.DataAccess.UserRepository;
 import com.example.demo.Entities.Group;
+import com.example.demo.Entities.Page;
 import com.example.demo.Entities.User;
 import java.util.ArrayList;
 import java.util.List;
@@ -81,10 +83,9 @@ public class GroupService {
     @Transactional
     public List<GroupResponse> getMyGroups() {// use for just show groups!
 
-        List<Group> groups = groupRepository.findByMembersId(getAuthanticatedUser().getId());
+        List<Group> groups = groupRepository.findByMemberId(getAuthanticatedUser().getId());
 
         return groupMapper.toResponseList(groups);
-               
 
     }
 
@@ -107,9 +108,10 @@ public class GroupService {
     }
 
     @Transactional
-    public void joinGroup(Long groupId, JoinRequest joinReq) {
+    public void joinGroup(JoinRequest joinReq) {
+        String groupName=joinReq.getGroupName();
         String password = joinReq.getPassword();
-        Group group = groupRepository.findById(groupId).orElseThrow(() -> new RuntimeException("Grup Bulunamadı!"));
+        Group group = groupRepository.findByName(groupName).orElseThrow(() -> new RuntimeException("Grup Bulunamadı!"));
         User u = getAuthanticatedUser();
         if (group.getMembers().contains(u)) {
             throw new RuntimeException("KULLANICI ZATEN GRUBA UYE!");
@@ -122,6 +124,14 @@ public class GroupService {
 
     }
 
+    @Transactional
+    public List<PageResponse> getPages(Long id) {
+        List<Page> pages = pageRepository.findByGroupId(id);
+        return pages.stream().map(pageMapper::toResponse).collect(Collectors.toList());
+    }
+
+    
+    
     @Transactional
     public void deleteById(Long id) {
         groupRepository.deleteById(id);
