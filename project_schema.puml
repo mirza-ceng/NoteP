@@ -89,7 +89,9 @@ package "Bussiness" {
         + createGroup(groupRequest: GroupRequest)
         + getMyGroups(): List<GroupResponse>
         + getGroupById(id: Long): GroupResponse
+        + getGroupPages(groupId: Long): List<PageResponse>
         + joinGroup(groupId: Long, joinRequest: JoinRequest)
+        + deleteById(id: Long)
     }
 }
 
@@ -192,6 +194,7 @@ package "Controllers" {
         + create(groupRequest: GroupRequest): ResponseEntity<Map<String, String>>
         + getMyGroups(): ResponseEntity<List<GroupResponse>>
         + getGroupById(id: Long): ResponseEntity<GroupResponse>
+        + getGroupPages(id: Long): ResponseEntity<List<PageResponse>>
         + join(id: Long, joinRequest: JoinRequest): ResponseEntity<Map<String, String>>
     }
 }
@@ -490,6 +493,36 @@ Group endpointleri:
       Grup Bulunamadi!
       GUVENLIK IHLALI: Uyesi olmadiginiz bir grubun icerigini goremezsiniz!
 
+  GET /api/groups/{id}/pages
+    Auth: gerekli
+    Path parametreleri:
+      id: sayfalari goruntulenecek grup id
+    Basarili cevap:
+      [
+        {
+          "id": 1,
+          "title": "Not basligi",
+          "content": "Not icerigi",
+          "groupId": 1,
+          "ownerId": 1,
+          "ownerName": "Ali"
+        },
+        {
+          "id": 3,
+          "title": "Diger not",
+          "content": "Gruptaki baska bir uyenin notu",
+          "groupId": 1,
+          "ownerId": 2,
+          "ownerName": "Ayse"
+        }
+      ]
+    Olasi hatalar:
+      Grup Bulunamadi!
+      GUVENLIK IHLALI: Uyesi olmadiginiz bir grubun sayfalarini goremezsiniz!
+    Aciklama:
+      Bu endpoint gruptaki TUM uyelerin sayfalarini getirir (sadece sayfalar, grup detayi olmadan).
+      Kullanici once GET /api/groups/my-groups ile grup listesini alir, bir gruba tikladiginda bu endpoint ile o grubun sayfalarini goruntuler.
+
   POST /api/groups/join/{id}
     Auth: gerekli
     Path parametreleri:
@@ -546,5 +579,6 @@ endlegend
 TO DO LİST:
 profil bilgileri güncellendiinde,o usera ait pagelerinde(ve grupların) componentleri güncellenmeli,//user not found with email hatası
 gruba not ekleme ve silme
-profil güncellemeye ayar çek,
 getpagesofgroup endpointi ekle
+id parametreli endpointleri gözden geçir
+repository işlemlerinde aynı isimli değişkenler birden fazla bulunmasın(name,email)

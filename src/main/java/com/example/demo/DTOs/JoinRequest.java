@@ -11,14 +11,26 @@ import jakarta.validation.constraints.NotBlank;
  * @author 2005m
  */
 public class JoinRequest {
-@NotBlank(message = "Pssword can not be empty!!")
+
+    @NotBlank(message = "Group name can not be empty!!")
+    private String groupName;
+    @NotBlank(message = "Password can not be empty!!")
     private String password;
 
-    public JoinRequest(String password) {
+    public JoinRequest(String password,String groupName) {
         this.password = password;
+        this.groupName=groupName;
     }
 
     public JoinRequest() {
+    }
+
+    public String getGroupName() {
+        return groupName;
+    }
+
+    public void setGroupName(String groupName) {
+        this.groupName = groupName;
     }
 
     public String getPassword() {
