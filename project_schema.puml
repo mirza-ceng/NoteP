@@ -33,7 +33,8 @@ package "Entities" {
 package "DataAccess" {
     interface UserRepository extends JpaRepository<User, Long> {
         + findByEMail(eMail: String): Optional<User>
-        + existsByEMail(eMail: String): boolean
+        + existsByEMailAndName(email: String, name: String): boolean
+        + updatePasswordByEmail(eMail: String, password: String): void  [@Modifying @Query]
     }
 
     interface PageRepository extends JpaRepository<Page, Long> {
@@ -46,6 +47,7 @@ package "DataAccess" {
     interface GroupRepository extends JpaRepository<Group, Long> {
         + findByName(name: String): Optional<Group>
         + findByMembersId(userId: Long): List<Group>
+        + existsByIdAndMembersId(groupId: Long, userId: Long): boolean
     }
 }
 
@@ -60,6 +62,7 @@ package "Bussiness" {
         + getById(id: Long): UserResponse
         + deleteById(id: Long)
         + update(userUpdateRequest: UserUpdateRequest)
+        + getProfile(): UserResponse
         + loadUserByUsername(username: String): UserDetails
         - getAuthanticatedUser(): User
     }
@@ -89,9 +92,10 @@ package "Bussiness" {
         + createGroup(groupRequest: GroupRequest)
         + getMyGroups(): List<GroupResponse>
         + getGroupById(id: Long): GroupResponse
-        + getGroupPages(groupId: Long): List<PageResponse>
-        + joinGroup(groupId: Long, joinRequest: JoinRequest)
-        + deleteById(id: Long)
+        + getPages(groupId: Long): List<PageResponse>
+        + joinGroup(joinRequest: JoinRequest)
+        + leaveFromGroup(groupId: Long)
+        + updatePageOfGroup(groupId: Long, pageId: Long, pageRequest: PageRequest)
     }
 }
 
@@ -159,6 +163,7 @@ package "DTOs" {
     }
 
     class JoinRequest {
+        - groupName: String
         - password: String
     }
 
@@ -177,6 +182,7 @@ package "Controllers" {
         + register(userRequest: UserRequest): ResponseEntity<Map<String, String>>
         + login(loginRequest: LoginRequest): ResponseEntity<String>
         + update(userUpdateRequest: UserUpdateRequest): ResponseEntity<Map<String, String>>
+        + getProfile(): ResponseEntity<UserResponse>
     }
 
     class PageController {
@@ -194,8 +200,10 @@ package "Controllers" {
         + create(groupRequest: GroupRequest): ResponseEntity<Map<String, String>>
         + getMyGroups(): ResponseEntity<List<GroupResponse>>
         + getGroupById(id: Long): ResponseEntity<GroupResponse>
-        + getGroupPages(id: Long): ResponseEntity<List<PageResponse>>
-        + join(id: Long, joinRequest: JoinRequest): ResponseEntity<Map<String, String>>
+        + leaveFromGroup(id: Long): ResponseEntity<Map<String, String>>
+        + join(joinRequest: JoinRequest): ResponseEntity<Map<String, String>>
+        + getPages(id: Long): ResponseEntity<List<PageResponse>>
+        + updatePageOfGroup(id: Long, pageId: Long, pageRequest: PageRequest): ResponseEntity<Map<String, String>>
     }
 }
 
@@ -367,6 +375,16 @@ Auth endpointleri:
       Sifre disindaki alanlar (name, surName, eMail) guncellenemez.
       Kimlik dogrulama JWT token uzerinden yapilir.
 
+  GET /api/auth/me
+    Auth: gerekli
+    Basarili cevap:
+      {
+        "id": 1,
+        "name": "Ali",
+        "surName": "Veli",
+        "eMail": "ali@example.com"
+      }
+
 Page endpointleri:
   POST /api/pages/save
     Auth: gerekli
@@ -392,7 +410,7 @@ Page endpointleri:
         }
       ]
 
-  PUT /api/pages/update/{id}
+  PUT /api/pages/{id}
     Auth: gerekli
     Path parametreleri:
       id: guncellenecek not id
@@ -406,7 +424,7 @@ Page endpointleri:
     Olasi hata:
       Page not found
 
-  DELETE /api/pages/delete/{id}
+  DELETE /api/pages/{id}
     Auth: gerekli
     Path parametreleri:
       id: silinecek not id
@@ -523,12 +541,11 @@ Group endpointleri:
       Bu endpoint gruptaki TUM uyelerin sayfalarini getirir (sadece sayfalar, grup detayi olmadan).
       Kullanici once GET /api/groups/my-groups ile grup listesini alir, bir gruba tikladiginda bu endpoint ile o grubun sayfalarini goruntuler.
 
-  POST /api/groups/join/{id}
+  POST /api/groups/join
     Auth: gerekli
-    Path parametreleri:
-      id: katilacak grup id
     Body:
       {
+        "groupName": "Grup adi",
         "password": "grupSifresi"
       }
     Basarili cevap:
@@ -537,6 +554,31 @@ Group endpointleri:
       Grup Bulunamadi!
       KULLANICI ZATEN GRUBA UYE!
       YANLIS SIFRE GIRDINIZ!
+
+  DELETE /api/groups/{id}
+    Auth: gerekli
+    Path parametreleri:
+      id: ayrilacak grup id
+    Basarili cevap:
+      { "message": "Ayrilma islemi basarili." }
+    Olasi hatalar:
+      This group doesn't exist!
+      You are not member
+
+  PUT /api/groups/{id}/pages/{pageId}
+    Auth: gerekli
+    Path parametreleri:
+      id: grup id
+      pageId: guncellenecek sayfa id
+    Body:
+      {
+        "title": "Yeni baslik",
+        "content": "Yeni icerik"
+      }
+    Basarili cevap:
+      { "message": "Update basarili." }
+    Olasi hata:
+      You are not member of this group!
 
 Validation notlari:
   - UserRequest:
@@ -553,6 +595,7 @@ Validation notlari:
     name zorunlu
     password zorunlu
   - JoinRequest:
+    groupName zorunlu
     password zorunlu
 
 Hata cevap formati:
@@ -577,6 +620,6 @@ endlegend
 
 
 TO DO LİST:
-!!many to many ilişkisi kur(page-group) bir page birden fazla gruba dahil olabilmeli
-id parametreli endpointleri gözden geçir
-repository işlemlerinde aynı isimli değişkenler birden fazla bulunmasın(name,email)
+!!many to many ilişkisi kur(page-group): bir page birden fazla gruba dahil olabilmeli (Henüz yapılmadı)
+id parametreli endpointleri gözden geçir: join endpointi düzeltildi, /join/{id} yerine /join oldu
+repository işlemlerinde aynı isimli değişkenler birden fazla bulunmasın(name,email) ✅

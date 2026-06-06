@@ -58,6 +58,26 @@ server.port=${PORT:8080}
 | `app_group`      | Group  | Groups (password-protected) |
 | `group_members`  | (join) | Many-to-many: User ↔ Group |
 
+### Column Mappings (Entity → Database)
+
+| Entity | Java Field | DB Column Name    |
+| ------ | ---------- | ----------------- |
+| User   | id         | `user_id`         |
+| User   | name       | `name`            |
+| User   | surName    | `surName`         |
+| User   | eMail      | `eMail` (unique)  |
+| User   | password   | `password`        |
+| Page   | id         | `page_id`         |
+| Page   | title      | `title`           |
+| Page   | content    | `content` (TEXT)  |
+| Page   | createdDate | `created_date`   |
+| Page   | lastUpdateDate | `last_update_date` |
+| Page   | user       | `user_id` (FK)    |
+| Page   | group      | `group_id` (FK, nullable) |
+| Group  | id         | `group_id`        |
+| Group  | name       | `name`            |
+| Group  | password   | `password`        |
+
 ---
 
 ## 3. ENTITY RELATIONSHIPS (JPA)
@@ -67,11 +87,11 @@ server.port=${PORT:8080}
 @Entity @Table(name = "app_user") @DynamicUpdate
 public class User {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    Long id;
-    String name;       // nullable = false
-    String surName;    // nullable = false
-    String eMail;      // nullable = false, unique = true
-    String password;   // nullable = false
+    @Column(name = "user_id") Long id;
+    @Column(name = "name", nullable = false) String name;
+    @Column(name = "surName", nullable = false) String surName;
+    @Column(name = "eMail", nullable = false, unique = true) String eMail;
+    @Column(name = "password", nullable = false) String password;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     List<Page> pages = new ArrayList<>();
@@ -86,11 +106,10 @@ public class User {
 @Entity @Table(name = "page") @EntityListeners(AuditingEntityListener.class)
 public class Page {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    Long id;
-    String title;        // nullable = false
-    @Lob @Column(columnDefinition = "TEXT")
-    String content;
-    @CreatedDate LocalDateTime createdDate;     // updatable = false
+    @Column(name = "page_id") Long id;
+    @Column(name = "title", nullable = false) String title;
+    @Lob @Column(name = "content", columnDefinition = "TEXT") String content;
+    @CreatedDate @Column(updatable = false) LocalDateTime createdDate;
     @LastModifiedDate LocalDateTime lastUpdateDate;
 
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "user_id", nullable = false)
@@ -106,9 +125,9 @@ public class Page {
 @Entity @Table(name = "app_group")
 public class Group {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    Long id;
-    String name;        // nullable = false
-    String password;    // nullable = false (BCrypt-hashed)
+    @Column(name = "group_id") Long id;
+    @Column(name = "name", nullable = false) String name;
+    @Column(name = "password", nullable = false) String password;
 
     @ManyToMany
     @JoinTable(name = "group_members",
@@ -160,8 +179,8 @@ src/main/java/com/example/demo/
 │   └── LoginResponse.java     ← { token, message, user (UserResponse) }
 │
 ├── Bussiness/                 ← Service layer (business logic)
-│   ├── UserService.java       ← User CRUD, auth, implements UserDetailsService
-│   ├── GroupService.java      ← Group CRUD, membership, page management
+│   ├── UserService.java       ← User CRUD, auth, profile, implements UserDetailsService
+│   ├── GroupService.java      ← Group CRUD, membership, page management (join by name+password)
 │   └── PageService.java       ← Page CRUD, group assignment
 │
 ├── Controllers/               ← REST endpoints
@@ -184,9 +203,9 @@ src/main/java/com/example/demo/
 │   └── GroupMapper.java       ← Group ↔ GroupResponse/GroupRequest
 │
 ├── DataAccess/                ← Spring Data JPA Repositories
-│   ├── UserRepository.java    ← findByEMail, existsByEMailAndName, updatePasswordByEmail
+│   ├── UserRepository.java    ← findByEMail, existsByEMailAndName, updatePasswordByEmail (@Modifying @Query)
 │   ├── PageRepository.java    ← findByIdAndUserId, findByUserId, findByGroupId, findByUserIdAndGroupId
-│   └── GroupRepository.java   ← findByName, findByMembersId, isMember
+│   └── GroupRepository.java   ← findByName, findByMembersId, existsByIdAndMembersId
 │
 ├── Entities/                  ← JPA entities
 │   ├── User.java              → table: app_user
@@ -208,7 +227,7 @@ src/main/java/com/example/demo/
 ### Authentication Flow
 
 1. **Register:** `POST /api/auth/register` → password is BCrypt-hashed → saved to DB
-2. **Login:** `POST /api/auth/login` → password verified with BCrypt → JWT token returned as **raw string**
+2. **Login:** `POST /api/auth/login` → password verified with BCrypt → JWT token returned as **raw string** (plain text, not JSON)
 3. **Authenticated Requests:** Every subsequent request must include header: `Authorization: Bearer <token>`
 
 ### JWT Details
@@ -218,7 +237,7 @@ src/main/java/com/example/demo/
 - **Secret Key:** From `application.properties` → `jwt.secretSTR`
 - **Expiration:** 5 hours from generation
 - **Claims:** `subject` = user's email (eMail)
-- **Token in response:** `login` endpoint returns the token as a **raw string** (not JSON), not as a JSON object.
+- **Token in response:** The `login` endpoint extracts the token from `LoginResponse` and returns it as a **raw string** (not JSON).
 
 ### Security Configuration (`SecurityConfig.java`)
 
@@ -396,7 +415,7 @@ This retrieves the currently authenticated user from the security context (set b
 ```json
 // No request body
 // Success Response (200)
-{ "message": "Not gruptan çıkarıldı." }
+{ "message": "Not gruptan cıkarıldı." }
 // Possible errors:
 // "Page doesn't have a group" (400)
 // "You are not member of this group!" (400)
@@ -409,7 +428,7 @@ This retrieves the currently authenticated user from the security context (set b
 | POST   | `/api/groups/create`                  | Create a new group                       |
 | GET    | `/api/groups/my-groups`               | List current user's groups               |
 | GET    | `/api/groups/{id}`                    | Get group details (must be member)       |
-| POST   | `/api/groups/join`                    | Join a group with password               |
+| POST   | `/api/groups/join`                    | Join a group with name + password        |
 | DELETE | `/api/groups/{id}`                    | Leave (exit) a group                     |
 | GET    | `/api/groups/{id}/pages`              | List all pages in a group                |
 | PUT    | `/api/groups/{id}/pages/{pageId}`     | Update a page inside a group             |
@@ -471,7 +490,7 @@ Note: This only returns groups the current user is a member of. Pages list may b
 
 #### POST `/api/groups/join`
 ```json
-// Request
+// Request (note: using groupName, NOT groupId)
 {
   "groupName": "Backend Ekibi",
   "password": "group123"
@@ -492,6 +511,22 @@ Note: This only returns groups the current user is a member of. Pages list may b
 // Possible errors:
 // "This group doesn't exist!" (400)
 // "You are not member" (400)
+```
+
+#### GET `/api/groups/{id}/pages`
+```json
+// Success Response (200)
+[
+  {
+    "id": 1,
+    "title": "Ders Notu",
+    "content": "Spring Boot notları",
+    "groupId": 1,
+    "ownerId": 1,
+    "ownerName": "Ali"
+  }
+]
+// Note: Returns ALL pages in the group, not just the current user's pages
 ```
 
 #### PUT `/api/groups/{id}/pages/{pageId}`
@@ -538,6 +573,7 @@ Handled by `GlobalExceptionHandler.java` (a `@ControllerAdvice` class):
 | IllegalArgumentException | 400         | `{ "error": "<message>", "status": 400, "path": "..." }` |
 | Exception (generic)     | 500         | `{ "error": "Internal Server Error", "status": 500, "path": "..." }` |
 | No/invalid JWT token    | 401/403     | Handled by Spring Security (not custom handler) |
+| ResourceNotFoundException | 400       | `{ "error": "<message>", "status": 400, "path": "..." }` |
 
 ---
 
@@ -613,6 +649,15 @@ Handled by `GlobalExceptionHandler.java` (a `@ControllerAdvice` class):
 - If password matches → generates JWT token (5-hour expiry) with email as subject
 - Returns token as **raw string** (not JSON object!)
 
+### Get Profile
+- `GET /api/auth/me` returns the current authenticated user's profile (id, name, surName, eMail)
+- Uses `getAuthanticatedUser()` to retrieve user from security context
+
+### Password Update
+- Only password can be updated (name, surName, eMail cannot be changed)
+- Uses `@Modifying @Query` in `UserRepository.updatePasswordByEmail()` for direct DB update
+- Password is BCrypt-hashed before persistence
+
 ### Page Ownership & Security
 - Users can only update/delete their own pages (`pageRepository.findByIdAndUserId()`)
 - Users can only add their own pages to groups
@@ -622,15 +667,14 @@ Handled by `GlobalExceptionHandler.java` (a `@ControllerAdvice` class):
 - When creating a group, the creator is automatically added as a member
 - Group passwords are BCrypt-hashed
 - Group details/pages can only be viewed by **members** of the group
-- To join a group, user must provide the correct password
-- Any group member can update pages belonging to the group (checked via `groupRepository.isMember()`) - **this means ANY group member can edit ANY page in the group**
+- To join a group, user must provide the correct group **name** AND **password** (via JoinRequest with groupName + password)
+- Any group member can update pages belonging to the group (checked via `groupRepository.existsByIdAndMembersId()`) - **this means ANY group member can edit ANY page in the group**
 - Users can leave a group via `DELETE /api/groups/{id}` which:
   - Finds the group by ID
   - Checks if the current user is a member
   - Removes the user from the group's members list
   - Removes the group from the user's groups list (bidirectional relationship maintenance)
   - Saves the group
-
 
 ### Page ↔ Group Relationship
 - A page can be in at most one group (or none)
@@ -643,12 +687,11 @@ Handled by `GlobalExceptionHandler.java` (a `@ControllerAdvice` class):
 - `@EntityListeners(AuditingEntityListener.class)` on Page entity
 - `@CreatedDate` on `createdDate` field (auto-set on creation)
 - `@LastModifiedDate` on `lastUpdateDate` field (auto-set on update)
-- In `PageService.updatePage()`, `lastUpdateDate` is also manually set via `pageMapper.updateEntityWithResponse()`
 
 ### Data Flow for Creating a Page
 1. Controller receives `PageRequest` (title + content)
-2. Service creates `new Page(title, content)` (not using mapper)
-3. Sets `page.setUser(authenticatedUser)` - **Note:** `page.setUser(null)` is called first then overridden
+2. Service creates `new Page(dto.getTitle(), dto.getContent())` (not using mapper)
+3. Sets `page.setUser(null)` then `page.setUser(authenticatedUser)`
 4. Saves via `pageRepository.save(page)`
 
 ---
@@ -713,6 +756,33 @@ if (jwtUtil.validateToken(jwt, eMail)) {
 }
 ```
 
+### How group membership is checked (isMember):
+```java
+// GroupService.java - checks if current user is a member of the group
+boolean isMember = group.getMembers().stream().anyMatch(
+    item -> item.getId().equals(currentUserId)
+);
+if (!isMember) {
+    throw new RuntimeException("GUVENLIK IHLALI:Uyesı olmadıgınız bır grubun ıcerıgını goremezsınız!");
+}
+```
+
+### How group membership is checked via repository:
+```java
+// GroupService.updatePageOfGroup() - checks using repository method
+if (groupRepository.existsByIdAndMembersId(groupId, userId)) {
+    // User is a member, proceed with update
+}
+```
+
+### How password is updated directly in DB:
+```java
+// UserRepository.java
+@Modifying(clearAutomatically = true, flushAutomatically = true)
+@Query("UPDATE User u SET u.password = :password WHERE u.eMail = :eMail")
+void updatePasswordByEmail(@Param("eMail") String eMail, @Param("password") String password);
+```
+
 ---
 
 ## 15. RESPONSE FORMATS SUMMARY
@@ -738,10 +808,11 @@ All errors follow this pattern (except Spring Security errors):
 - "Kullanıcı güncelleme başarılı." → User update successful
 - "Not oluşturma başarılı." → Note created successfully
 - "Not başarıyla gruba dahil edildi." → Note successfully added to group
-- "Not gruptan çıkarıldı." → Note removed from group
+- "Not gruptan cıkarıldı." → Note removed from group
 - "Silme işlemi başarılı." → Deletion successful
 - "Grup Olusturma Basarılı!" → Group creation successful
 - "Gruba Katılım Basarılı!" → Successfully joined group
+- "Ayrılma işlemi başarılı." → Left/quit group successfully
 - "This User Already Existed." → Duplicate user (English)
 - "Hatalı şifre ya da e-posta!" → Wrong password or email
 - "User not found" → User not found
@@ -752,8 +823,10 @@ All errors follow this pattern (except Spring Security errors):
 - "GÜVENLİK İHLALİ: Başkasına ait bir notu silemezsiniz!" → Security violation: cannot delete another user's note
 - "GUVENLIK IHLALI:Uyesı olmadıgınız bır grubun ıcerıgını goremezsınız!" → Security violation: cannot view non-member group content
 - "You are not member of this group!" → Not a group member
+- "You are not member" → Not a group member (short form)
 - "Page is not exist or You are not owner." → Page not found or not owned
 - "Page doesn't have a group" → Page not associated with any group
+- "This group doesn't exist!" → Group not found (by ID)
 
 ---
 
@@ -779,12 +852,11 @@ springdoc.enable-data-rest=false
 
 ---
 
-## 17. TO-DO LIST (from project_schema.puml)
-- [ ] When user profile info is updated, pages and group components belonging to that user should also be updated (user not found with email error)
-- [ ] Add note to group and remove note from group (partially done)
-- [ ] getpagesofgroup endpoint was added
-- [ ] Review id-parameterized endpoints
-- [ ] Fix duplicate variables (name, email) in repository operations
+## 17. TO-DO LIST
+- [ ] Implement many-to-many relationship between Page and Group (a page should be able to belong to multiple groups)
+- [ ] Review and fix id-parameterized endpoints (done: join endpoint changed from `/join/{id}` to `/join`)
+- [x] Fix duplicate variable names (name, email) in repository operations
+- [ ] When user profile info is updated, pages and group components belonging to that user should also be updated (currently can get "user not found with email" errors)
 
 ---
 
@@ -801,6 +873,7 @@ For a frontend developer building against this API:
 7. **CORS:** Enabled (`@CrossOrigin`) on all controllers
 8. **Error handling:** All business errors return HTTP 400 with JSON body containing `error`, `status`, `path`
 9. **Validation errors:** Returned as HTTP 400 (handled by Spring)
+10. **Join group flow:** `POST /api/groups/join` with body `{ "groupName": "...", "password": "..." }` (NOT `/join/{id}`)
 
 ---
 
