@@ -19,7 +19,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByEMail(String eMail);
 
-    boolean existsByEMail(String email);
+    boolean existsByEMailAndName(String email,String name);
+    
     
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE User u SET u.password = :password WHERE u.eMail = :eMail")

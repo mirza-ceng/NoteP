@@ -53,7 +53,7 @@ public class PageController {
 
     }
 
-    @PutMapping("/update/{id}")
+    @PutMapping("/{id}")
     public ResponseEntity<Map<String, String>> updatePage(@PathVariable Long id, @Valid @RequestBody PageRequest dto) {
         pageService.updatePage(id, dto);
         Map<String, String> response = new HashMap<>();
@@ -62,7 +62,7 @@ public class PageController {
 
     }
 
-    @DeleteMapping("/delete/{id}")
+    @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, String>> delete(@PathVariable Long id) {
         pageService.deleteById(id);
         Map<String, String> response = new HashMap<>();

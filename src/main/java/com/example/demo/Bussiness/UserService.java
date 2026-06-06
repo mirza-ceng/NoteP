@@ -50,10 +50,10 @@ public class UserService implements UserDetailsService {
 
     @Transactional
     public void register(UserRequest userRequest) {
-        System.out.println("servis çalıştı..");
+
         try {
             User user = mapper.toEntity(userRequest);
-            if (userRepository.existsByEMail(user.geteMail())) {
+            if (userRepository.existsByEMailAndName(user.geteMail(),user.getName())) {
                 throw new RuntimeException("This User Already Existed.");
             }
             String password = user.getPassword();
