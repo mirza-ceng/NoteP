@@ -2,7 +2,7 @@
 
 package "Entities" {
     class User {
-        - id: long
+        - id: Long
         - name: String
         - surName: String
         - eMail: String
@@ -12,7 +12,7 @@ package "Entities" {
     }
 
     class Page {
-        - id: long
+        - id: Long
         - title: String
         - content: String
         - createdDate: LocalDateTime
@@ -22,7 +22,7 @@ package "Entities" {
     }
 
     class Group {
-        - id: long
+        - id: Long
         - name: String
         - password: String
         - members: List<User>
@@ -57,20 +57,25 @@ package "Bussiness" {
         - jwtUtil: JWTUtil
         + register(userRequest: UserRequest)
         + logIn(loginRequest: LoginRequest): LoginResponse
-        + getById(id: long): UserResponse
-        + deleteById(id: long)
-        + update(userRequest: UserRequest)
+        + getById(id: Long): UserResponse
+        + deleteById(id: Long)
+        + update(userUpdateRequest: UserUpdateRequest)
+        + loadUserByUsername(username: String): UserDetails
+        - getAuthanticatedUser(): User
     }
 
     class PageService {
+        - groupRepository: GroupRepository
         - pageRepository: PageRepository
         - userRepository: UserRepository
         - userMapper: UserMapper
         - pageMapper: PageMapper
         + savePage(pageRequest: PageRequest)
         + getMyPages(): List<PageResponse>
-        + updatePage(id: Long, pageResponse: PageResponse)
+        + updatePage(id: Long, pageRequest: PageRequest)
         + deleteById(id: Long)
+        + addToGroup(pageId: Long, groupId: Long)
+        + removeFromGroup(pageId: Long)
     }
 
     class GroupService {
@@ -84,6 +89,7 @@ package "Bussiness" {
         + createGroup(groupRequest: GroupRequest)
         + getMyGroups(): List<GroupResponse>
         + getGroupById(id: Long): GroupResponse
+        + getGroupPages(groupId: Long): List<PageResponse>
         + joinGroup(groupId: Long, joinRequest: JoinRequest)
         + deleteById(id: Long)
     }
@@ -97,8 +103,12 @@ package "DTOs" {
         - password: String
     }
 
+    class UserUpdateRequest {
+        - password: String
+    }
+
     class UserResponse {
-        - id: long
+        - id: Long
         - name: String
         - surName: String
         - eMail: String
@@ -110,23 +120,12 @@ package "DTOs" {
     }
 
     class PageResponse {
-        - id: long
+        - id: Long
         - title: String
         - content: String
         - groupId: Long
         - ownerId: Long
         - ownerName: String
-    }
-
-    class LoginRequest {
-        - eMail: String
-        - password: String
-    }
-
-    class LoginResponse {
-        - token: String
-        - message: String
-        - user: UserResponse
     }
 
     interface IMapper<Response, Entity> {
@@ -135,14 +134,16 @@ package "DTOs" {
 
     class UserMapper implements IMapper<UserResponse, User> {
         + toResponse(u: User): UserResponse
+        + toRequest(u: User): UserRequest
+        + toResponseList(userList: List<User>): List<UserResponse>
         + toEntity(userRequest: UserRequest): User
-        + updateEntityWithRequest(user: User, userRequest: UserRequest): User
     }
 
     class PageMapper implements IMapper<PageResponse, Page> {
         + toResponse(page: Page): PageResponse
-        + toEntity(pageResponse: PageResponse): Page
-        + updateEntityWithResponse(page: Page, pageResponse: PageResponse): Page
+        + toResponseList(pageList: List<Page>): List<PageResponse>
+        + toEntity(pageRequest: PageRequest): Page
+        + updateEntityWithResponse(page: Page, pageRequest: PageRequest): Page
     }
 
     class GroupRequest {
@@ -153,8 +154,8 @@ package "DTOs" {
     class GroupResponse {
         - id: Long
         - name: String
-        - members: List<User>
-        - pages: List<Page>
+        - members: List<UserResponse>
+        - pages: List<PageResponse>
     }
 
     class JoinRequest {
@@ -162,7 +163,10 @@ package "DTOs" {
     }
 
     class GroupMapper implements IMapper<GroupResponse, Group> {
+        - userMapper: UserMapper
+        - pageMapper: PageMapper
         + toResponse(group: Group): GroupResponse
+        + toResponseList(groupList: List<Group>): List<GroupResponse>
         + toEntity(groupRequest: GroupRequest): Group
     }
 }
@@ -172,15 +176,17 @@ package "Controllers" {
         - userService: UserService
         + register(userRequest: UserRequest): ResponseEntity<Map<String, String>>
         + login(loginRequest: LoginRequest): ResponseEntity<String>
-        + update(userRequest: UserRequest): ResponseEntity<Map<String, String>>
+        + update(userUpdateRequest: UserUpdateRequest): ResponseEntity<Map<String, String>>
     }
 
     class PageController {
         - pageService: PageService
         + save(pageRequest: PageRequest): ResponseEntity<Map<String, String>>
         + getMyPages(): ResponseEntity<List<PageResponse>>
-        + updatePage(id: Long, pageResponse: PageResponse): ResponseEntity<Map<String, String>>
+        + updatePage(id: Long, pageRequest: PageRequest): ResponseEntity<Map<String, String>>
         + delete(id: Long): ResponseEntity<Map<String, String>>
+        + addToGroup(pageId: Long, groupId: Long): ResponseEntity<Map<String, String>>
+        + removeFromGroup(pageId: Long): ResponseEntity<Map<String, String>>
     }
 
     class GroupController {
@@ -188,6 +194,7 @@ package "Controllers" {
         + create(groupRequest: GroupRequest): ResponseEntity<Map<String, String>>
         + getMyGroups(): ResponseEntity<List<GroupResponse>>
         + getGroupById(id: Long): ResponseEntity<GroupResponse>
+        + getGroupPages(id: Long): ResponseEntity<List<PageResponse>>
         + join(id: Long, joinRequest: JoinRequest): ResponseEntity<Map<String, String>>
     }
 }
@@ -227,9 +234,26 @@ package "AuthenticationElements" {
 
 package "Config" {
     class SecurityConfig {
+        - jwtFilter: JWTFilter
         + passwordEncoder(): BCryptPasswordEncoder
         + filterChain(http: HttpSecurity): SecurityFilterChain
     }
+
+    class OpenApiConfig {
+        - BEARER_AUTH: String
+        + notePOpenAPI(): OpenAPI
+    }
+}
+
+package "Application" {
+    class NotePApplication {
+        + main(args: String[])
+    }
+}
+
+package "External Framework Types" {
+    interface UserDetailsService
+    class OncePerRequestFilter
 }
 
 UserController --> UserService
@@ -237,8 +261,10 @@ UserService --> UserRepository
 UserService --> UserMapper
 UserService --> JWTUtil
 UserService --> BCryptPasswordEncoder
+UserService ..|> UserDetailsService
 
 PageController --> PageService
+PageService --> GroupRepository
 PageService --> PageRepository
 PageService --> UserRepository
 PageService --> UserMapper
@@ -255,14 +281,18 @@ GroupService --> BCryptPasswordEncoder
 
 UserMapper --> UserResponse
 UserMapper --> UserRequest
+UserMapper --> UserUpdateRequest
 UserMapper --> User
 
 PageMapper --> PageResponse
+PageMapper --> PageRequest
 PageMapper --> Page
 
 GroupMapper --> GroupResponse
 GroupMapper --> GroupRequest
 GroupMapper --> Group
+GroupMapper --> UserMapper
+GroupMapper --> PageMapper
 
 User --> Page : has many
 User --> Group : has many
@@ -275,7 +305,278 @@ Page --> Group : belongs to
 GlobalExceptionHandler --> Controllers : advises
 
 JWTFilter --> JWTUtil
+JWTFilter --|> OncePerRequestFilter
 SecurityConfig --> BCryptPasswordEncoder
 SecurityConfig --> JWTFilter
+OpenApiConfig --> SecurityConfig : documents bearer auth
+
+legend bottom
+== Frontend API Notlari ==
+
+Base URL:
+  http://localhost:8080
+
+Genel kurallar:
+  - JSON header: Content-Type: application/json
+  - /api/auth/register ve /api/auth/login public endpointlerdir.
+  - Diger endpointler JWT ister.
+  - Login cevabi raw token string doner; frontend bu token'i saklamali.
+  - Yetkili isteklerde header:
+    Authorization: Bearer <token>
+  - CORS aciktir.
+  - Swagger/OpenAPI:
+    /swagger-ui.html
+    /swagger-ui/index.html
+    /v3/api-docs
+
+Auth endpointleri:
+  POST /api/auth/register
+    Body:
+      {
+        "name": "Ali",
+        "surName": "Veli",
+        "eMail": "ali@example.com",
+        "password": "123456"
+      }
+    Basarili cevap:
+      { "message": "Kullanici olusturuldu." }
+    Olasi hata:
+      This User Already Existed.
+
+  POST /api/auth/login
+    Body:
+      {
+        "eMail": "ali@example.com",
+        "password": "123456"
+      }
+    Basarili cevap:
+      <jwt-token-string>
+    Olasi hatalar:
+      User not found
+      Hatali sifre ya da e-posta!
+
+  PUT /api/auth/update
+    Auth: gerekli
+    Body:
+      {
+        "password": "123456"
+      }
+    Basarili cevap:
+      { "message": "Kullanici guncelleme basarili." }
+    Aciklama:
+      Sifre disindaki alanlar (name, surName, eMail) guncellenemez.
+      Kimlik dogrulama JWT token uzerinden yapilir.
+
+Page endpointleri:
+  POST /api/pages/save
+    Auth: gerekli
+    Body:
+      {
+        "title": "Not basligi",
+        "content": "Not icerigi"
+      }
+    Basarili cevap:
+      { "message": "Not olusturma basarili." }
+
+  GET /api/pages/my-list
+    Auth: gerekli
+    Basarili cevap:
+      [
+        {
+          "id": 1,
+          "title": "Not basligi",
+          "content": "Not icerigi",
+          "groupId": 2,
+          "ownerId": 1,
+          "ownerName": "Ali"
+        }
+      ]
+
+  PUT /api/pages/update/{id}
+    Auth: gerekli
+    Path parametreleri:
+      id: guncellenecek not id
+    Body:
+      {
+        "title": "Yeni baslik",
+        "content": "Yeni icerik"
+      }
+    Basarili cevap:
+      { "message": "Update basarili." }
+    Olasi hata:
+      Page not found
+
+  DELETE /api/pages/delete/{id}
+    Auth: gerekli
+    Path parametreleri:
+      id: silinecek not id
+    Basarili cevap:
+      { "message": "Silme islemi basarili." }
+    Olasi hata:
+      GUVENLIK IHLALI: Baskasina ait bir notu silemezsiniz!
+
+  PUT /api/pages/{pageId}/add-to-group/{groupId}
+    Auth: gerekli
+    Path parametreleri:
+      pageId: gruba eklenecek not id
+      groupId: hedef grup id
+    Basarili cevap:
+      { "message": "Not basariyla gruba dahil edildi." }
+    Olasi hatalar:
+      Page is not exist or You are not owner.
+      Group is not found.
+      You are not member of this group!
+
+  PUT /api/pages/{pageId}/remove-from-group
+    Auth: gerekli
+    Path parametreleri:
+      pageId: gruptan cikarilacak not id
+    Basarili cevap:
+      { "message": "Not gruptan cikarildi." }
+    Olasi hatalar:
+      Page doesn't have a group
+      You are not member of this group!
+
+Group endpointleri:
+  POST /api/groups/create
+    Auth: gerekli
+    Body:
+      {
+        "name": "Grup adi",
+        "password": "grupSifresi"
+      }
+    Basarili cevap:
+      { "message": "Grup Olusturma Basarili!" }
+    Olasi hata:
+      Grup ismi kullanilmis!
+
+  GET /api/groups/my-groups
+    Auth: gerekli
+    Basarili cevap:
+      [
+        {
+          "id": 1,
+          "name": "Grup adi",
+          "members": [
+            {
+              "id": 1,
+              "name": "Ali",
+              "surName": "Veli",
+              "eMail": "ali@example.com"
+            }
+          ],
+          "pages": [
+            {
+              "id": 1,
+              "title": "Not basligi",
+              "content": "Not icerigi",
+              "groupId": 1,
+              "ownerId": 1,
+              "ownerName": "Ali"
+            }
+          ]
+        }
+      ]
+
+  GET /api/groups/{id}
+    Auth: gerekli
+    Path parametreleri:
+      id: goruntulenecek grup id
+    Basarili cevap:
+      {
+        "id": 1,
+        "name": "Grup adi",
+        "members": [],
+        "pages": []
+      }
+    Olasi hatalar:
+      Grup Bulunamadi!
+      GUVENLIK IHLALI: Uyesi olmadiginiz bir grubun icerigini goremezsiniz!
+
+  GET /api/groups/{id}/pages
+    Auth: gerekli
+    Path parametreleri:
+      id: sayfalari goruntulenecek grup id
+    Basarili cevap:
+      [
+        {
+          "id": 1,
+          "title": "Not basligi",
+          "content": "Not icerigi",
+          "groupId": 1,
+          "ownerId": 1,
+          "ownerName": "Ali"
+        },
+        {
+          "id": 3,
+          "title": "Diger not",
+          "content": "Gruptaki baska bir uyenin notu",
+          "groupId": 1,
+          "ownerId": 2,
+          "ownerName": "Ayse"
+        }
+      ]
+    Olasi hatalar:
+      Grup Bulunamadi!
+      GUVENLIK IHLALI: Uyesi olmadiginiz bir grubun sayfalarini goremezsiniz!
+    Aciklama:
+      Bu endpoint gruptaki TUM uyelerin sayfalarini getirir (sadece sayfalar, grup detayi olmadan).
+      Kullanici once GET /api/groups/my-groups ile grup listesini alir, bir gruba tikladiginda bu endpoint ile o grubun sayfalarini goruntuler.
+
+  POST /api/groups/join/{id}
+    Auth: gerekli
+    Path parametreleri:
+      id: katilacak grup id
+    Body:
+      {
+        "password": "grupSifresi"
+      }
+    Basarili cevap:
+      { "message": "Gruba Katilim Basarili!" }
+    Olasi hatalar:
+      Grup Bulunamadi!
+      KULLANICI ZATEN GRUBA UYE!
+      YANLIS SIFRE GIRDINIZ!
+
+Validation notlari:
+  - UserRequest:
+    name zorunlu, max 50
+    surName zorunlu, max 50
+    eMail zorunlu, email formatinda, max 100
+    password zorunlu, min 6, max 100
+  - UserUpdateRequest:
+    password zorunlu, min 6, max 100
+  - PageRequest:
+    title zorunlu, max 100
+    content zorunlu, max 10000
+  - GroupRequest:
+    name zorunlu
+    password zorunlu
+  - JoinRequest:
+    password zorunlu
+
+Hata cevap formati:
+  RuntimeException / IllegalArgumentException:
+    HTTP 400
+    {
+      "error": "hata mesaji",
+      "status": 400,
+      "path": "/api/..."
+    }
+  Genel Exception:
+    HTTP 500
+    {
+      "error": "Internal Server Error",
+      "status": 500,
+      "path": "/api/..."
+    }
+  Token yoksa/gecersizse Spring Security 401/403 donebilir.
+endlegend
 
 @enduml
+
+
+TO DO LİST:
+!!many to many ilişkisi kur(page-group) bir page birden fazla gruba dahil olabilmeli
+id parametreli endpointleri gözden geçir
+repository işlemlerinde aynı isimli değişkenler birden fazla bulunmasın(name,email)

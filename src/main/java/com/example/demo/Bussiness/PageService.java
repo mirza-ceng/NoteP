@@ -88,7 +88,7 @@ public class PageService {
     }
 
     @Transactional
-    public void updatePage(Long id, PageResponse dto) {
+    public void updatePage(Long id, PageRequest dto) {
 
         User u = getAuthanticatedUser();
 

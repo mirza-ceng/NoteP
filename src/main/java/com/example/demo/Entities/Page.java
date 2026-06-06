@@ -17,7 +17,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
  *
  * @author 2005m
  */
-@Configuration
+
 
 
 @Entity

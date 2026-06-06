@@ -10,6 +10,7 @@ import com.example.demo.AuthenticationElements.LoginResponse;
 import com.example.demo.DTOs.UserMapper;
 import com.example.demo.DTOs.UserRequest;
 import com.example.demo.DTOs.UserResponse;
+import com.example.demo.DTOs.UserUpdateRequest;
 import com.example.demo.DataAccess.UserRepository;
 import com.example.demo.Entities.User;
 import java.util.ArrayList;
@@ -49,10 +50,10 @@ public class UserService implements UserDetailsService {
 
     @Transactional
     public void register(UserRequest userRequest) {
-        System.out.println("servis çalıştı..");
+
         try {
             User user = mapper.toEntity(userRequest);
-            if (userRepository.existsByEMail(user.geteMail())) {
+            if (userRepository.existsByEMailAndName(user.geteMail(),user.getName())) {
                 throw new RuntimeException("This User Already Existed.");
             }
             String password = user.getPassword();
@@ -92,14 +93,19 @@ public class UserService implements UserDetailsService {
         userRepository.deleteById(id);
     }
 
-    @Transactional//tamam
-    public void update(UserRequest ur) {
+    @Transactional
+    public void update(UserUpdateRequest ur) {
 
-        User originUser = getAuthanticatedUser();
-        User updatedUser = mapper.updateEntityWithRequest(originUser, ur);
+        String eMail = SecurityContextHolder.getContext().getAuthentication().getName();
+        String encodedPassword = passwordEncoder.encode(ur.getPassword());
+        userRepository.updatePasswordByEmail(eMail, encodedPassword);
 
-        userRepository.save(updatedUser);
+    }
 
+    @Transactional
+    public UserResponse getProfile() {
+        User u = getAuthanticatedUser();
+        return userRepository.findById(u.getId()).map(mapper::toResponse).orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
     @Override

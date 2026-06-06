@@ -5,35 +5,35 @@
 package com.example.demo.DTOs;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 /**
  *
  * @author 2005m
  */
-public class GroupRequest {
+public class UserUpdateRequest {
 
-    @NotBlank(message = "Group Name can not be empty")
-    private String name;
-    @NotBlank(message = "Password can not be empty")
+    @NotBlank(message = "Şifre alanı boş bırakılamaz!")
+    @Size(min = 6, max = 100, message = "Şifre en az 6, en fazla 100 karakter olmalıdır!")
     private String password;
 
-    public GroupRequest(String name, String password) {
-        this.name = name;
+    public UserUpdateRequest() {
+    }
+
+    public UserUpdateRequest(String password) {
         this.password = password;
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
+    /**
+     * @return the password
+     */
     public String getPassword() {
         return password;
     }
 
+    /**
+     * @param password the password to set
+     */
     public void setPassword(String password) {
         this.password = password;
     }

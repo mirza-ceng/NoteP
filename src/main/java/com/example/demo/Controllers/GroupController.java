@@ -15,10 +15,12 @@ import com.example.demo.DTOs.GroupResponse;
 import com.example.demo.DTOs.JoinRequest;
 import com.example.demo.DTOs.PageRequest;
 import com.example.demo.DTOs.PageResponse;
+import jakarta.validation.Valid;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/groups")
+@CrossOrigin
 public class GroupController {
 
     private final GroupService groupService;
@@ -41,7 +44,7 @@ public class GroupController {
     }
 
     @PostMapping("/create")
-    public ResponseEntity<Map<String, String>> create(@RequestBody GroupRequest groupRequest) {
+    public ResponseEntity<Map<String, String>> create(@Valid @RequestBody GroupRequest groupRequest) {
         groupService.createGroup(groupRequest);
         Map<String, String> response = new HashMap<>();
         response.put("message", "Grup Olusturma Basarılı!");
@@ -61,12 +64,45 @@ public class GroupController {
         return ResponseEntity.ok(groupService.getGroupById(id));
     }
 
-    @PostMapping("/join/{id}")
-    public ResponseEntity<Map<String, String>> join(@PathVariable Long id, @RequestBody JoinRequest joinReq) {
-        groupService.joinGroup(id, joinReq);
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Map<String, String>> leaveFromGroup(@PathVariable Long id) {
+        groupService.leaveFromGroup(id);
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Ayrılma işlemi başarılı.");
+        return ResponseEntity.ok(response);
+
+    }
+
+    @PostMapping("/join")
+    public ResponseEntity<Map<String, String>> join(@Valid @RequestBody JoinRequest joinReq) {
+        groupService.joinGroup(joinReq);
         Map<String, String> response = new HashMap<>();
         response.put("message", "Gruba Katılım Basarılı!");
         return ResponseEntity.ok(response);
 
     }
+
+    @GetMapping("/{id}/pages")
+    public ResponseEntity<List<PageResponse>> getPages(
+            @PathVariable Long id
+    ) {
+
+        return ResponseEntity.ok(groupService.getPages(id));
+
+    }
+
+    //GROUP PAGE 
+    @PutMapping("/{id}/pages/{pageId}")//groupid--pageid
+    public ResponseEntity<Map<String, String>> updatePageOfGroup(@PathVariable Long id, @PathVariable Long pageId, @Valid @RequestBody PageRequest dto) {
+
+        groupService.updatePageOfGroup(id, pageId, dto);
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Update başarılı.");
+        return ResponseEntity.ok(response);
+
+    }
+
+   
+    
+   
 }

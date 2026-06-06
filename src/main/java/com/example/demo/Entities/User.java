@@ -8,6 +8,7 @@ import com.fasterxml.jackson.annotation.*;
 import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
+import org.hibernate.annotations.DynamicUpdate;
 
 /**
  *
@@ -15,6 +16,7 @@ import java.util.List;
  */
 @Entity
 @Table(name = "app_user")
+@DynamicUpdate
 public class User {
 
     @Id

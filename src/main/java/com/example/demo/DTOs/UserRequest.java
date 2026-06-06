@@ -4,15 +4,28 @@
  */
 package com.example.demo.DTOs;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
 /**
  *
  * @author 2005m
  */
 public class UserRequest {
 
+    @NotBlank(message = "İsim alanı boş bırakılamaz!")
+    @Size(max = 50, message = "İsim en fazla 50 karakter olabilir!")
     private String name;
+    @NotBlank(message = "İsim alanı boş bırakılamaz!")
+    @Size(max = 50, message = "İsim en fazla 50 karakter olabilir!")
     private String surName;
+    @NotBlank(message = "E-posta alanı boş bırakılamaz!")
+    @Email(message = "Lütfen geçerli bir e-posta adresi giriniz!")
+    @Size(max = 100, message = "E-posta en fazla 100 karakter olabilir!")
     private String eMail;
+    @NotBlank(message = "Şifre alanı boş bırakılamaz!")
+    @Size(min = 6, max = 100, message = "Şifre en az 6, en fazla 100 karakter olmalıdır!")
     private String password;
 
     public UserRequest(String name, String surName, String eMail, String password) {

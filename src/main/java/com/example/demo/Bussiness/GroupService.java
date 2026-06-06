@@ -9,11 +9,14 @@ import com.example.demo.DTOs.GroupRequest;
 import com.example.demo.DTOs.GroupResponse;
 import com.example.demo.DTOs.JoinRequest;
 import com.example.demo.DTOs.PageMapper;
+import com.example.demo.DTOs.PageRequest;
+import com.example.demo.DTOs.PageResponse;
 import com.example.demo.DTOs.UserMapper;
 import com.example.demo.DataAccess.GroupRepository;
 import com.example.demo.DataAccess.PageRepository;
 import com.example.demo.DataAccess.UserRepository;
 import com.example.demo.Entities.Group;
+import com.example.demo.Entities.Page;
 import com.example.demo.Entities.User;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class GroupService {
+//aaa
 
     private final BCryptPasswordEncoder passwordEncoder;
     private final PageRepository pageRepository;
@@ -82,13 +86,7 @@ public class GroupService {
 
         List<Group> groups = groupRepository.findByMembersId(getAuthanticatedUser().getId());
 
-        return groups.stream().map(
-                (Group item) -> new GroupResponse(
-                        item.getId(),
-                        item.getName(),
-                        null,
-                        null)
-        ).collect(Collectors.toList());
+        return groupMapper.toResponseList(groups);
 
     }
 
@@ -102,16 +100,19 @@ public class GroupService {
         if (!isMember) {
             throw new RuntimeException("GUVENLIK IHLALI:Uyesı olmadıgınız bır grubun ıcerıgını goremezsınız!");
         }
-        return new GroupResponse(group.getId(),
+        GroupResponse groupResponse = new GroupResponse(group.getId(),
                 group.getName(),
-                group.getMembers(),
-                group.getPages());
+                userMapper.toResponseList(group.getMembers()),
+                pageMapper.toResponseList(group.getPages())
+        );
+        return groupResponse;
     }
 
     @Transactional
-    public void joinGroup(Long groupId, JoinRequest joinReq) {
-        String password=joinReq.getPassword();
-        Group group = groupRepository.findById(groupId).orElseThrow(() -> new RuntimeException("Grup Bulunamadı!"));
+    public void joinGroup(JoinRequest joinReq) {
+        String groupName = joinReq.getGroupName();
+        String password = joinReq.getPassword();
+        Group group = groupRepository.findByName(groupName).orElseThrow(() -> new RuntimeException("Grup Bulunamadı!"));
         User u = getAuthanticatedUser();
         if (group.getMembers().contains(u)) {
             throw new RuntimeException("KULLANICI ZATEN GRUBA UYE!");
@@ -125,8 +126,48 @@ public class GroupService {
     }
 
     @Transactional
-    public void deleteById(Long id) {
-        groupRepository.deleteById(id);
+    public void leaveFromGroup(Long groupId) {
+        User u = getAuthanticatedUser();
+        Group group = groupRepository.findById(groupId).orElseThrow(() -> new RuntimeException("This group doesn't exist!"));
+        boolean isMember = group.getMembers().stream()
+                .anyMatch(member -> member.getId().equals(u.getId()));
+
+        if (isMember) {
+            group.getMembers().remove(u);
+            u.getGroups().remove(group);
+
+        } else {
+            throw new RuntimeException("You are not member");
+        }
+        groupRepository.save(group);
+
     }
 
+    //PAGE 
+    @Transactional
+    public List<PageResponse> getPages(Long id) {
+        List<Page> pages = pageRepository.findByGroupId(id);
+        return pages.stream().map(pageMapper::toResponse).collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void updatePageOfGroup(Long groupId, Long pageId, PageRequest pageReq) {
+        User u = getAuthanticatedUser();
+        Long userId = u.getId();
+        if (groupRepository.existByIdAndMembersId(groupId, userId)) {
+
+            Page originPage = pageRepository.findById(pageId).orElseThrow(() -> new ResourceNotFoundException("Page not found "));
+
+            pageMapper.updateEntityWithResponse(originPage, pageReq);
+
+            pageRepository.save(originPage);
+
+        } else {
+            throw new RuntimeException("You are not member of this group!");
+        }
+
+    }
+    
+    
+    
 }
