@@ -9,6 +9,7 @@ import com.example.demo.DTOs.GroupRequest;
 import com.example.demo.DTOs.GroupResponse;
 import com.example.demo.DTOs.JoinRequest;
 import com.example.demo.DTOs.PageMapper;
+import com.example.demo.DTOs.PageRequest;
 import com.example.demo.DTOs.PageResponse;
 import com.example.demo.DTOs.UserMapper;
 import com.example.demo.DataAccess.GroupRepository;
@@ -109,7 +110,7 @@ public class GroupService {
 
     @Transactional
     public void joinGroup(JoinRequest joinReq) {
-        String groupName=joinReq.getGroupName();
+        String groupName = joinReq.getGroupName();
         String password = joinReq.getPassword();
         Group group = groupRepository.findByName(groupName).orElseThrow(() -> new RuntimeException("Grup Bulunamadı!"));
         User u = getAuthanticatedUser();
@@ -125,16 +126,48 @@ public class GroupService {
     }
 
     @Transactional
+    public void leaveFromGroup(Long groupId) {
+        User u = getAuthanticatedUser();
+        Group group = groupRepository.findById(groupId).orElseThrow(() -> new RuntimeException("This group doesn't exist!"));
+        boolean isMember = group.getMembers().stream()
+                .anyMatch(member -> member.getId().equals(u.getId()));
+
+        if (isMember) {
+            group.getMembers().remove(u);
+            u.getGroups().remove(group);
+
+        } else {
+            throw new RuntimeException("You are not member");
+        }
+        groupRepository.save(group);
+
+    }
+
+    //PAGE 
+    @Transactional
     public List<PageResponse> getPages(Long id) {
         List<Page> pages = pageRepository.findByGroupId(id);
         return pages.stream().map(pageMapper::toResponse).collect(Collectors.toList());
     }
 
-    
-    
     @Transactional
-    public void deleteById(Long id) {
-        groupRepository.deleteById(id);
-    }
+    public void updatePageOfGroup(Long groupId, Long pageId, PageRequest pageReq) {
+        User u = getAuthanticatedUser();
+        Long userId = u.getId();
+        if (groupRepository.isMember(userId, groupId)) {
 
+            Page originPage = pageRepository.findById(pageId).orElseThrow(() -> new ResourceNotFoundException("Page not found "));
+
+            pageMapper.updateEntityWithResponse(originPage, pageReq);
+
+            pageRepository.save(originPage);
+
+        } else {
+            throw new RuntimeException("You are not member of this group!");
+        }
+
+    }
+    
+    
+    
 }

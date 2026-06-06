@@ -64,8 +64,17 @@ public class GroupController {
         return ResponseEntity.ok(groupService.getGroupById(id));
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Map<String, String>> leaveFromGroup(@PathVariable Long id) {
+        groupService.leaveFromGroup(id);
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Ayrılma işlemi başarılı.");
+        return ResponseEntity.ok(response);
+
+    }
+
     @PostMapping("/join")
-    public ResponseEntity<Map<String, String>> join( @Valid @RequestBody JoinRequest joinReq) {
+    public ResponseEntity<Map<String, String>> join(@Valid @RequestBody JoinRequest joinReq) {
         groupService.joinGroup(joinReq);
         Map<String, String> response = new HashMap<>();
         response.put("message", "Gruba Katılım Basarılı!");
@@ -81,5 +90,19 @@ public class GroupController {
         return ResponseEntity.ok(groupService.getPages(id));
 
     }
-    //add getGroupPages
+
+    //GROUP PAGE 
+    @PutMapping("/{id}/pages/{pageId}")//groupid--pageid
+    public ResponseEntity<Map<String, String>> updatePageOfGroup(@PathVariable Long id, @PathVariable Long pageId, @Valid @RequestBody PageRequest dto) {
+
+        groupService.updatePageOfGroup(id, pageId, dto);
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Update başarılı.");
+        return ResponseEntity.ok(response);
+
+    }
+
+   
+    
+   
 }
