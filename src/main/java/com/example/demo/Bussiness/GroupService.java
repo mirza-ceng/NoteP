@@ -154,7 +154,7 @@ public class GroupService {
     public void updatePageOfGroup(Long groupId, Long pageId, PageRequest pageReq) {
         User u = getAuthanticatedUser();
         Long userId = u.getId();
-        if (groupRepository.isMember(userId, groupId)) {
+        if (groupRepository.existByIdAndMembersId(groupId, userId)) {
 
             Page originPage = pageRepository.findById(pageId).orElseThrow(() -> new ResourceNotFoundException("Page not found "));
 
