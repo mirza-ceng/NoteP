@@ -7,6 +7,8 @@ package com.example.demo.Entities;
 import com.fasterxml.jackson.annotation.*;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -17,9 +19,6 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
  *
  * @author 2005m
  */
-
-
-
 @Entity
 @Table(name = "page")
 @EntityListeners(AuditingEntityListener.class)
@@ -49,13 +48,36 @@ public class Page {
     @LastModifiedDate
     private LocalDateTime lastUpdateDate;
 
+    @OneToMany(mappedBy = "page", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Attachment> attachments = new ArrayList<>();
+
+    public void addAttachment(Attachment attachment) {
+        attachments.add(attachment);
+        attachment.setPage(this);
+    }
+
+    public void removeAttachment(Attachment attachment) {
+        attachments.remove(attachment);
+        attachment.setPage(null);
+    }
+
+    
+
     public Page(String title, String content) {
         this.title = title;
         this.content = content;
-        this.createdDate=LocalDateTime.now();
+        this.createdDate = LocalDateTime.now();
     }
 
     public Page() {
+    }
+
+    public List<Attachment> getAttachments() {
+        return attachments;
+    }
+
+    public void setAttachments(List<Attachment> attachments) {
+        this.attachments = attachments;
     }
 
     public Long getId() {

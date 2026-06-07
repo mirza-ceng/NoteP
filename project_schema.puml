@@ -620,6 +620,9 @@ endlegend
 
 
 TO DO LİST:
-!!many to many ilişkisi kur(page-group): bir page birden fazla gruba dahil olabilmeli (Henüz yapılmadı)
+
 id parametreli endpointleri gözden geçir: join endpointi düzeltildi, /join/{id} yerine /join oldu
 repository işlemlerinde aynı isimli değişkenler birden fazla bulunmasın(name,email) ✅
+attachment eklendi
+
+pageDto ları güncelle (attachment a göre)
