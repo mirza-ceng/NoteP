@@ -52,12 +52,13 @@ public class Page {
     private List<Attachment> attachments = new ArrayList<>();
 
     public void addAttachment(Attachment attachment) {
-        attachments.add(attachment);
+        getAttachments().add(attachment);
         attachment.setPage(this);
+        
     }
 
     public void removeAttachment(Attachment attachment) {
-        attachments.remove(attachment);
+        getAttachments().remove(attachment);
         attachment.setPage(null);
     }
 
@@ -67,6 +68,7 @@ public class Page {
         this.title = title;
         this.content = content;
         this.createdDate = LocalDateTime.now();
+        
     }
 
     public Page() {

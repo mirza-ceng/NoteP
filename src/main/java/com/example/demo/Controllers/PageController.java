@@ -5,12 +5,14 @@
 package com.example.demo.Controllers;
 
 import com.example.demo.Bussiness.PageService;
+import com.example.demo.DTOs.AttachmentResponse;
 import com.example.demo.DTOs.PageRequest;
 import com.example.demo.DTOs.PageResponse;
 import jakarta.validation.Valid;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -21,7 +23,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  *
@@ -86,5 +90,19 @@ public class PageController {
         response.put("message", "Not gruptan cıkarıldı.");
         return ResponseEntity.ok(response);
     }
+    //File 
+    @PostMapping(value = "/{pageId}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<AttachmentResponse> uploadFile(@PathVariable Long pageId, @RequestParam("file") MultipartFile file) {
+        AttachmentResponse response = pageService.uploadAttachmentToResponse(pageId, file);
+        return ResponseEntity.ok(response);
 
+    }
+
+    @DeleteMapping("/{pageId}/attachments/{attachmentId}")
+    public ResponseEntity<Map<String, String>> deleteFile(@PathVariable Long pageId, @PathVariable Long attachmentId) {
+        pageService.deleteAttachmentFromPage(pageId, attachmentId);
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Dosya Silme Basarili");
+        return ResponseEntity.ok(response);
+    }
 }

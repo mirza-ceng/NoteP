@@ -4,6 +4,10 @@
  */
 package com.example.demo.DTOs;
 
+import com.example.demo.Entities.Attachment;
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  *
  * @author 2005m
@@ -16,14 +20,24 @@ public class PageResponse { //used for both request and response!
     private Long groupId;
     private Long ownerId;     // Teknik işlemler için 
     private String ownerName;
+    private List<AttachmentResponse> attachments;
 
-    public PageResponse(Long id, String title, String content, Long groupId, Long ownerId, String ownerName) {
+    public PageResponse(Long id, String title, String content, Long groupId, Long ownerId, String ownerName,List<AttachmentResponse> attachments) {
         this.id = id;
         this.title = title;
         this.content = content;
         this.groupId = groupId;
         this.ownerId = ownerId;
         this.ownerName = ownerName;
+        this.attachments=attachments;
+    }
+
+    public List<AttachmentResponse> getAttachments() {
+        return attachments;
+    }
+
+    public void setAttachments(List<AttachmentResponse> attachments) {
+        this.attachments = attachments;
     }
 
     public Long getId() {

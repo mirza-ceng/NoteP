@@ -626,3 +626,9 @@ repository işlemlerinde aynı isimli değişkenler birden fazla bulunmasın(nam
 attachment eklendi
 
 pageDto ları güncelle (attachment a göre)
+admin paneli eklenebilir sonra
+İleride bu yapının çok daha performanslı çalışması için uygulayabileceğimiz iki harika Clean Code stratejisi var:
+
+Asenkron Yükleme (Thread/Task): Şu anki kodumuzda s3Client.putObject işlemi bitene kadar HTTP isteği bloklanıyor (bekliyor). İleride dosyayı arka planda (@Async kullanarak) yükletip, kullanıcıya anında "Yükleme başlatıldı" yanıtı dönebiliriz.
+
+Doğrudan Buluttan Okuma: Dosya yüklenirken backend'den geçiyor ama dosyayı okurken/görüntülerken Spring Boot hiç yorulmuyor. Flutter direkt olarak veri tabanından gelen public fileUrl adresine istek atıp dosyayı Supabase üzerinden çok hızlı bir şekilde (CDN avantajıyla) indiriyor.

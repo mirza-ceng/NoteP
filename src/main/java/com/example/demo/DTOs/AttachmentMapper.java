@@ -35,4 +35,11 @@ public class AttachmentMapper implements IMapper<AttachmentResponse, Attachment>
         return (List<AttachmentResponse>) list.stream().map(this::toResponse).collect(Collectors.toList());
     }
 
+    public Attachment toEntity(AttachmentRequest request) {
+        if (request == null) {
+            return null;
+        }
+        return new Attachment(request.getFileName(), request.getFileUrl(), request.getFileType(), request.getFileSize());
+    }
+
 }

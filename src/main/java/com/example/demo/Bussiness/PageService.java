@@ -4,10 +4,13 @@
  */
 package com.example.demo.Bussiness;
 
+import com.example.demo.DTOs.AttachmentMapper;
+import com.example.demo.DTOs.AttachmentResponse;
 import com.example.demo.DTOs.PageMapper;
 import com.example.demo.DTOs.PageRequest;
 import com.example.demo.DTOs.PageResponse;
 import com.example.demo.DTOs.UserMapper;
+import com.example.demo.DataAccess.AttachmentRepository;
 import com.example.demo.DataAccess.GroupRepository;
 import com.example.demo.DataAccess.PageRepository;
 import com.example.demo.DataAccess.UserRepository;
@@ -21,6 +24,9 @@ import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import com.example.demo.DTOs.AttachmentResponse;
+import com.example.demo.Entities.Attachment;
 
 /**
  *
@@ -28,76 +34,95 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class PageService {
-
+    
+    private final IStorageService storageService;
+    private final AttachmentMapper attachmentMapper;
+    private final AttachmentRepository attachmentRepository;
     private final GroupRepository groupRepository;
     private final PageRepository pageRepository;
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final PageMapper pageMapper;
-
-    public PageService(PageRepository pageRepository, UserRepository userRepository, UserMapper userMapper, PageMapper pageMapper, GroupRepository groupRepository) {
+    
+    public PageService(PageRepository pageRepository,
+            UserRepository userRepository,
+            UserMapper userMapper,
+            PageMapper pageMapper,
+            GroupRepository groupRepository,
+            IStorageService storageService,
+            AttachmentMapper attachmentMapper,
+            AttachmentRepository attachmentRepository
+    ) {
         this.pageRepository = pageRepository;
         this.userRepository = userRepository;
         this.userMapper = userMapper;
         this.pageMapper = pageMapper;
         this.groupRepository = groupRepository;
-
+        this.storageService = storageService;
+        this.attachmentMapper = attachmentMapper;
+        this.attachmentRepository = attachmentRepository;
+        
     }
-
+    
     private User getAuthanticatedUser() {
         String eMail = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByEMail(eMail).orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + eMail));
     }
-
+    
     private String getAuthanticatedUserEMail() {
         return SecurityContextHolder.getContext().getAuthentication().getName();
     }
-
+    
     @Transactional
     public void savePage(PageRequest dto) {
-
+        
         User u = getAuthanticatedUser();
         //Page page = pageMapper.toEntity(dto);
         Page page = new Page(dto.getTitle(), dto.getContent());
         page.setUser(null);
         page.setUser(u);
         pageRepository.save(page);
-
+        
     }
-
+    
     @Transactional
     public List<PageResponse> getMyPages() {
-
+        
         User u = getAuthanticatedUser();
-
+        
         List<Page> pages = pageRepository.findByUserId(u.getId());
-
+        
         return pages.stream().map(pageMapper::toResponse).collect(Collectors.toList());
     }
-
+    
     @Transactional
     public void deleteById(Long id) {
         String eMail = getAuthanticatedUserEMail();
         Page page = pageRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Page not found with id: " + eMail));
         if (page.getUser().geteMail().equals(eMail)) {
+            
+            for (Attachment attachment : page.getAttachments()) {
+                storageService.deleteFile(attachment.getFileUrl());
+            }
+            
             pageRepository.deleteById(id);
         } else {
             throw new RuntimeException("GÜVENLİK İHLALİ: Başkasına ait bir notu silemezsiniz!");
         }
-
+        
     }
-
+    
     @Transactional
     public void updatePage(Long id, PageRequest dto) {
-
+        
         User u = getAuthanticatedUser();
-
+        
         Page originPage = pageRepository.findByIdAndUserId(id, u.getId()).orElseThrow(() -> new ResourceNotFoundException("Page not found "));
-
+        
         pageMapper.updateEntityWithResponse(originPage, dto);
-
+        
         pageRepository.save(originPage);
-
+        
     }
 
     /**
@@ -111,7 +136,7 @@ public class PageService {
         User u = getAuthanticatedUser();
         Page page = pageRepository.findByIdAndUserId(pageId, u.getId()).orElseThrow(() -> new RuntimeException("Page is not exist or You are not owner. "));
         Group group = groupRepository.findById(groupId).orElseThrow(() -> new RuntimeException("Group is not found."));
-
+        
         if (group.getMembers().contains(u)) {
             page.setGroup(group);
             if (!group.getPages().contains(page)) {
@@ -119,13 +144,13 @@ public class PageService {
             }
             pageRepository.save(page);
             groupRepository.save(group);
-
+            
         } else {
             throw new RuntimeException("You are not member of this group!");
         }
-
+        
     }
-
+    
     @Transactional
     public void removeFromGroup(Long pageId) {
         User u = getAuthanticatedUser();
@@ -134,7 +159,7 @@ public class PageService {
         if (group == null) {
             throw new RuntimeException("Page doesn't have a group");
         }
-
+        
         if (group.getMembers().contains(u)) {
             page.setGroup(null);
             if (group.getPages().contains(page)) {
@@ -142,11 +167,42 @@ public class PageService {
             }
             pageRepository.save(page);
             groupRepository.save(group);
-
+            
         } else {
             throw new RuntimeException("You are not member of this group!");
         }
-
+        
     }
-
+    
+    @Transactional
+    public AttachmentResponse uploadAttachmentToResponse(Long pageId, MultipartFile file) {
+        User u = getAuthanticatedUser();
+        Page page = pageRepository.findByIdAndUserId(pageId, u.getId()).orElseThrow(
+                () -> new IllegalArgumentException("\"Not bulunamadı veya bu işlem için yetkiniz yok.\""));
+        
+        String folderName = "pages/" + pageId;
+        String fileUrl = storageService.uploadFile(file, folderName);
+        Attachment attachment = new Attachment(file.getOriginalFilename(), fileUrl, file.getContentType(), file.getSize());
+        page.addAttachment(attachment);
+        Attachment savedAttachment = attachmentRepository.save(attachment);
+        return attachmentMapper.toResponse(savedAttachment);
+        
+    }
+    
+    @Transactional
+    public void deleteAttachmentFromPage(Long pageId, Long attachmentId) {
+        User u = getAuthanticatedUser();
+        Page page = pageRepository.findByIdAndUserId(pageId, u.getId()).orElseThrow(
+                () -> new IllegalArgumentException("\"Not bulunamadı veya bu işlem için yetkiniz yok.\""));
+        
+        Attachment attachment = attachmentRepository.findById(attachmentId).orElseThrow(() -> new IllegalArgumentException("Dosya Bulunamadı."));
+        
+        if (!attachment.getPage().getId().equals(pageId)) {
+            throw new IllegalArgumentException("Bu dosya belirtilen nota ait değil!");
+        }
+        storageService.deleteFile(attachment.getFileUrl());
+        page.removeAttachment(attachment);
+        attachmentRepository.delete(attachment);
+        
+    }
 }

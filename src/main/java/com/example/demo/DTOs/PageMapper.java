@@ -20,11 +20,23 @@ import org.springframework.stereotype.Component;
 @Component
 public class PageMapper implements IMapper<PageResponse, Page> {
 
+    AttachmentMapper attMapper;
+    public PageMapper( AttachmentMapper attMapper){
+    this.attMapper=attMapper;
+    }
+
     @Override
     public PageResponse toResponse(Page page) {
         User owner = page.getUser();
         Long groupId = (page.getGroup() != null) ? page.getGroup().getId() : null;// could be null!!
-        PageResponse response = new PageResponse(page.getId(), page.getTitle(), page.getContent(), groupId, owner.getId(), owner.getName());
+
+        List<AttachmentResponse> attachmentsResponse = attMapper.toResponseList(page.getAttachments());
+
+        PageResponse response = new PageResponse(
+                page.getId(), page.getTitle(),
+                page.getContent(), groupId,
+                owner.getId(), owner.getName(), attachmentsResponse
+        );
 
         return response;
     }
@@ -34,9 +46,9 @@ public class PageMapper implements IMapper<PageResponse, Page> {
             return Collections.emptyList();
         }
         return (List<PageResponse>) pageList.stream().map(this::toResponse).collect(Collectors.toList());
-        //page için tolist yapısını güncelle
+
     }
-   
+
     public Page updateEntityWithResponse(Page existingPage, PageRequest dto) {
         existingPage.setContent(dto.getContent());
         existingPage.setTitle(dto.getTitle());
@@ -44,11 +56,12 @@ public class PageMapper implements IMapper<PageResponse, Page> {
         return existingPage;
 
     }
-
     
+    
+//findBY olacak şekilde düzenle gerekirse(hangi kafayla yaptınmq)
     public Page toEntity(PageRequest r) {
-        Page page = new Page(r.getTitle(), r.getContent());
-        
+        Page page = (r == null) ? null : new Page(r.getTitle(), r.getContent());
+
         return page;
 
     }
