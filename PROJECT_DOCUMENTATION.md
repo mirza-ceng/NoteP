@@ -27,7 +27,9 @@
 | Database Drivers    | MySQL (local), PostgreSQL (production/Render)   |
 | Validation          | Hibernate Validator (Bean Validation)           |
 | API Documentation   | Springdoc OpenAPI 3.0.3 (Swagger UI)            |
+| File Storage        | Supabase S3-compatible API (AWS SDK S3 v2)      |
 | Testing             | Spring Boot Starter Test                        |
+| Utility             | Lombok (on Attachment entity)                   |
 
 ---
 
@@ -57,6 +59,8 @@ server.port=${PORT:8080}
 | `page`           | Page   | Notes/pages              |
 | `app_group`      | Group  | Groups (password-protected) |
 | `group_members`  | (join) | Many-to-many: User ↔ Group |
+| `page_attachment`| Attachment | File attachments for pages |
+
 
 ### Column Mappings (Entity → Database)
 
@@ -77,6 +81,13 @@ server.port=${PORT:8080}
 | Group  | id         | `group_id`        |
 | Group  | name       | `name`            |
 | Group  | password   | `password`        |
+| Attachment | id     | `id`              |
+| Attachment | fileName | `file_name`      |
+| Attachment | fileUrl  | `file_url`       |
+| Attachment | fileType | `file_type`      |
+| Attachment | fileSize | `file_size`      |
+| Attachment | createdTime | `created_time` |
+| Attachment | page     | `page_id` (FK)    |
 
 ---
 
@@ -140,14 +151,33 @@ public class Group {
 }
 ```
 
+### Attachment Entity (`Entities/Attachment.java`)
+```java
+@Entity @Table(name = "page_attachment") @EntityListeners(AuditingEntityListener.class)
+@NoArgsConstructor @Getter @Setter
+public class Attachment {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY) Long id;
+    @Column(nullable = false) String fileName;
+    @Column(nullable = false, length = 512) String fileUrl;
+    @Column(nullable = false) String fileType;
+    @Column(nullable = false) Long fileSize;
+    @CreatedDate @Column(updatable = false) LocalDateTime createdTime;
+
+    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "page_id", nullable = false)
+    Page page;
+}
+```
+
 ### Summary of Relationships
 
 ```
-User ──OneToMany──→ Page          (A user has many pages)
-User ──ManyToMany→ Group          (A user belongs to many groups, a group has many users)
-Group ──OneToMany──→ Page         (A group has many pages)
-Page ──ManyToOne──→ User          (A page belongs to one user/owner)
-Page ──ManyToOne──→ Group         (A page belongs to one group, nullable)
+User     ──OneToMany──→ Page          (A user has many pages)
+User     ──ManyToMany→ Group          (A user belongs to many groups, a group has many users)
+Group    ──OneToMany──→ Page         (A group has many pages)
+Page     ──ManyToOne──→ User          (A page belongs to one user/owner)
+Page     ──ManyToOne──→ Group         (A page belongs to one group, nullable)
+Page     ──OneToMany──→ Attachment    (A page has many attachments)
+Attachment ──ManyToOne→ Page          (An attachment belongs to one page)
 ```
 
 ---
@@ -181,7 +211,9 @@ src/main/java/com/example/demo/
 ├── Bussiness/                 ← Service layer (business logic)
 │   ├── UserService.java       ← User CRUD, auth, profile, implements UserDetailsService
 │   ├── GroupService.java      ← Group CRUD, membership, page management (join by name+password)
-│   └── PageService.java       ← Page CRUD, group assignment
+│   ├── PageService.java       ← Page CRUD, group assignment, file attachment management
+│   ├── IStorageService.java   ← Interface for file storage operations
+│   └── SupabaseServiceImpl.java ← Supabase S3 implementation of IStorageService
 │
 ├── Controllers/               ← REST endpoints
 │   ├── UserController.java    ← /api/auth/**
@@ -194,29 +226,35 @@ src/main/java/com/example/demo/
 │   ├── UserResponse.java      ← User profile output
 │   ├── UserUpdateRequest.java ← Password update payload
 │   ├── PageRequest.java       ← Create/update page payload
-│   ├── PageResponse.java      ← Page output (includes groupId, ownerId, ownerName)
+│   ├── PageResponse.java      ← Page output (includes groupId, ownerId, ownerName, attachments: List<AttachmentResponse>)
 │   ├── GroupRequest.java      ← Create group payload
 │   ├── GroupResponse.java     ← Group output (includes members & pages lists)
 │   ├── JoinRequest.java       ← Join group payload (groupName + password)
+│   ├── AttachmentRequest.java ← Attachment creation payload
+│   ├── AttachmentResponse.java ← Attachment output (id, fileName, fileUrl, fileType, fileSize, createdTime)
 │   ├── UserMapper.java        ← User ↔ UserResponse/UserRequest
 │   ├── PageMapper.java        ← Page ↔ PageResponse/PageRequest
-│   └── GroupMapper.java       ← Group ↔ GroupResponse/GroupRequest
+│   ├── GroupMapper.java       ← Group ↔ GroupResponse/GroupRequest
+│   └── AttachmentMapper.java  ← Attachment ↔ AttachmentResponse
 │
 ├── DataAccess/                ← Spring Data JPA Repositories
 │   ├── UserRepository.java    ← findByEMail, existsByEMailAndName, updatePasswordByEmail (@Modifying @Query)
 │   ├── PageRepository.java    ← findByIdAndUserId, findByUserId, findByGroupId, findByUserIdAndGroupId
-│   └── GroupRepository.java   ← findByName, findByMembersId, existsByIdAndMembersId
+│   ├── GroupRepository.java   ← findByName, findByMembersId, existsByIdAndMembersId
+│   └── AttachmentRepository.java ← findByPageId
 │
 ├── Entities/                  ← JPA entities
 │   ├── User.java              → table: app_user
 │   ├── Page.java              → table: page
-│   └── Group.java             → table: app_group
+│   ├── Group.java             → table: app_group
+│   └── Attachment.java        → table: page_attachment (Lombok @Getter/@Setter/@NoArgsConstructor)
 │
 ├── ExceptionHandling/
 │   └── GlobalExceptionHandler.java  ← @ControllerAdvice exception handler
 │
 ├── SecurityConfig.java        ← Spring Security filter chain config
 ├── OpenApiConfig.java         ← Swagger/OpenAPI config with Bearer JWT auth
+├── StorageConfig.java         ← Supabase S3 client configuration (S3Client bean)
 └── NotePApplication.java      ← Main class (@SpringBootApplication, @EnableJpaAuditing)
 ```
 
@@ -352,6 +390,8 @@ This retrieves the currently authenticated user from the security context (set b
 | DELETE | `/api/pages/{id}`                           | Delete a page (only owner)           |
 | PUT    | `/api/pages/{pageId}/add-to-group/{groupId}` | Add page to a group                  |
 | PUT    | `/api/pages/{pageId}/remove-from-group`     | Remove page from its group           |
+| POST   | `/api/pages/{pageId}/attachments`           | Upload a file attachment to a page   |
+| DELETE | `/api/pages/{pageId}/attachments/{attachmentId}` | Delete a file attachment from a page |
 
 #### POST `/api/pages/save`
 ```json
@@ -420,6 +460,36 @@ This retrieves the currently authenticated user from the security context (set b
 // "Page doesn't have a group" (400)
 // "You are not member of this group!" (400)
 ```
+
+#### POST `/api/pages/{pageId}/attachments` (Upload File)
+- **Content-Type:** `multipart/form-data`
+- **Request:** Multipart file with field name `file`
+- **Success Response (200):**
+```json
+{
+  "id": 1,
+  "fileName": "document.pdf",
+  "fileUrl": "https://<supabase>/storage/v1/.../pages/1/document.pdf",
+  "fileType": "application/pdf",
+  "fileSize": 1024000,
+  "createdTime": "2025-06-19T03:00:00"
+}
+```
+- **Possible errors:**
+  - "Not bulunamadı veya bu işlem için yetkiniz yok." (400)
+- **Storage path:** Files are uploaded to Supabase S3 under `pages/{pageId}/` folder
+- **File size limits:** max 10MB per file, max 15MB per request
+
+#### DELETE `/api/pages/{pageId}/attachments/{attachmentId}` (Delete File)
+- **Success Response (200):**
+```json
+{ "message": "Dosya Silme Basarili" }
+```
+- **Possible errors:**
+  - "Not bulunamadı veya bu işlem için yetkiniz yok." (400)
+  - "Dosya Bulunamadı." (400)
+  - "Bu dosya belirtilen nota ait değil!" (400)
+- Both the database record and the actual file in Supabase S3 are deleted
 
 ### 6.3 Group Endpoints (`/api/groups/`) - All require JWT
 

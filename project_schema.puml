@@ -19,6 +19,19 @@ package "Entities" {
         - lastUpdateDate: LocalDateTime
         - user: User
         - group: Group
+        - attachments: List<Attachment>
+        + addAttachment(attachment: Attachment)
+        + removeAttachment(attachment: Attachment)
+    }
+
+    class Attachment {
+        - id: Long
+        - fileName: String
+        - fileUrl: String
+        - fileType: String
+        - fileSize: Long
+        - createdTime: LocalDateTime
+        - page: Page
     }
 
     class Group {
@@ -624,8 +637,12 @@ TO DO LİST:
 id parametreli endpointleri gözden geçir: join endpointi düzeltildi, /join/{id} yerine /join oldu
 repository işlemlerinde aynı isimli değişkenler birden fazla bulunmasın(name,email) ✅
 attachment eklendi
+!!! GUVENLIK SORUNU!!!
+ Eger istegi atan kullanıcı grup uyesi ise  gruba bakılmaksızın istedigi herhangi bir page in ıd sini tahmin ederek degiştirebiliyor
 
 pageDto ları güncelle (attachment a göre)
+env variable düzenlemelerini tamamla --application properties düzenle
+
 admin paneli eklenebilir sonra
 İleride bu yapının çok daha performanslı çalışması için uygulayabileceğimiz iki harika Clean Code stratejisi var:
 
