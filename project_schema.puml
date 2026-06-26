@@ -55,12 +55,17 @@ package "DataAccess" {
         + findByUserId(userId: Long): List<Page>
         + findByGroupId(groupId: Long): List<Page>
         + findByUserIdAndGroupId(userId: Long, groupId: Long): List<Page>
+        + findByIdAndUserOrGroupMember(pageId: Long, userId: Long): Optional<Page>  [@Query LEFT JOIN group.members]
     }
 
     interface GroupRepository extends JpaRepository<Group, Long> {
         + findByName(name: String): Optional<Group>
         + findByMembersId(userId: Long): List<Group>
         + existsByIdAndMembersId(groupId: Long, userId: Long): boolean
+    }
+
+    interface AttachmentRepository extends JpaRepository<Attachment, Long> {
+        + findByPageId(pageId: Long): List<Attachment>
     }
 }
 
@@ -92,6 +97,8 @@ package "Bussiness" {
         + deleteById(id: Long)
         + addToGroup(pageId: Long, groupId: Long)
         + removeFromGroup(pageId: Long)
+        + addAttachment(pageId: Long, file: MultipartFile): AttachmentResponse
+        + deleteAttachment(pageId: Long, attachmentId: Long)
     }
 
     class GroupService {
@@ -109,6 +116,35 @@ package "Bussiness" {
         + joinGroup(joinRequest: JoinRequest)
         + leaveFromGroup(groupId: Long)
         + updatePageOfGroup(groupId: Long, pageId: Long, pageRequest: PageRequest)
+    }
+
+    interface IStorageService {
+        + uploadFile(bucketName: String, key: String, file: InputStream, contentType: String): String
+        + deleteFile(bucketName: String, key: String)
+    }
+
+    class SupabaseServiceImpl implements IStorageService {
+        - s3Client: S3Client
+        + uploadFile(bucketName: String, key: String, file: InputStream, contentType: String): String
+        + deleteFile(bucketName: String, key: String)
+    }
+
+    interface IAiService {
+        + generateResponse(userMessage: String, contexts: List<Map<String, Object>>): String
+    }
+
+    class GeminiServiceImpl implements IAiService {
+        - chatModel: ChatModel
+        + generateResponse(userMessage: String, contexts: List<Map<String, Object>>): String
+    }
+
+    class ChatService {
+        - pageRepository: PageRepository
+        - userRepository: UserRepository
+        - groupRepository: GroupRepository
+        - aiService: IAiService
+        + handleChatWithContext(userMessage: String, pageIds: List<Long>): String
+        - getAuthanticatedUser(): User
     }
 }
 
@@ -187,6 +223,30 @@ package "DTOs" {
         + toResponseList(groupList: List<Group>): List<GroupResponse>
         + toEntity(groupRequest: GroupRequest): Group
     }
+
+    class AttachmentRequest {
+        - pageId: Long
+        - file: MultipartFile
+    }
+
+    class AttachmentResponse {
+        - id: Long
+        - fileName: String
+        - fileUrl: String
+        - fileType: String
+        - fileSize: Long
+        - createdTime: LocalDateTime
+    }
+
+    class AttachmentMapper implements IMapper<AttachmentResponse, Attachment> {
+        + toResponse(attachment: Attachment): AttachmentResponse
+        + toResponseList(attachmentList: List<Attachment>): List<AttachmentResponse>
+    }
+
+    record ChatRequest {
+        + message: String
+        + pageIds: List<Long>
+    }
 }
 
 package "Controllers" {
@@ -206,6 +266,8 @@ package "Controllers" {
         + delete(id: Long): ResponseEntity<Map<String, String>>
         + addToGroup(pageId: Long, groupId: Long): ResponseEntity<Map<String, String>>
         + removeFromGroup(pageId: Long): ResponseEntity<Map<String, String>>
+        + addAttachment(pageId: Long, file: MultipartFile): ResponseEntity<AttachmentResponse>
+        + deleteAttachment(pageId: Long, attachmentId: Long): ResponseEntity<Map<String, String>>
     }
 
     class GroupController {
@@ -217,6 +279,11 @@ package "Controllers" {
         + join(joinRequest: JoinRequest): ResponseEntity<Map<String, String>>
         + getPages(id: Long): ResponseEntity<List<PageResponse>>
         + updatePageOfGroup(id: Long, pageId: Long, pageRequest: PageRequest): ResponseEntity<Map<String, String>>
+    }
+
+    class ChatController {
+        - chatService: ChatService
+        + chatWithContext(chatRequest: ChatRequest): ResponseEntity<Map<String, String>>
     }
 }
 
@@ -264,6 +331,10 @@ package "Config" {
         - BEARER_AUTH: String
         + notePOpenAPI(): OpenAPI
     }
+
+    class StorageConfig {
+        + s3Client(): S3Client
+    }
 }
 
 package "Application" {
@@ -290,6 +361,7 @@ PageService --> PageRepository
 PageService --> UserRepository
 PageService --> UserMapper
 PageService --> PageMapper
+PageService --> IStorageService
 
 GroupController --> GroupService
 GroupService --> GroupRepository
@@ -299,6 +371,16 @@ GroupService --> UserMapper
 GroupService --> PageMapper
 GroupService --> GroupMapper
 GroupService --> BCryptPasswordEncoder
+
+ChatController --> ChatService
+ChatService --> PageRepository
+ChatService --> UserRepository
+ChatService --> GroupRepository
+ChatService --> IAiService
+IAiService <|.. GeminiServiceImpl
+GeminiServiceImpl --> ChatModel
+
+SupabaseServiceImpl ..|> IStorageService
 
 UserMapper --> UserResponse
 UserMapper --> UserRequest
@@ -315,6 +397,9 @@ GroupMapper --> Group
 GroupMapper --> UserMapper
 GroupMapper --> PageMapper
 
+AttachmentMapper --> AttachmentResponse
+AttachmentMapper --> Attachment
+
 User --> Page : has many
 User --> Group : has many
 Group --> Page : has many
@@ -322,6 +407,8 @@ Group --> User : has many
 
 Page --> User : belongs to
 Page --> Group : belongs to
+Page --> Attachment : has many
+Attachment --> Page : belongs to
 
 GlobalExceptionHandler --> Controllers : advises
 
@@ -335,7 +422,7 @@ legend bottom
 == Frontend API Notlari ==
 
 Base URL:
-  http://localhost:8080
+  http://localhost:8081
 
 Genel kurallar:
   - JSON header: Content-Type: application/json
@@ -468,6 +555,22 @@ Page endpointleri:
       Page doesn't have a group
       You are not member of this group!
 
+  POST /api/pages/{pageId}/attachments
+    Auth: gerekli
+    Content-Type: multipart/form-data (field: file)
+    Basarili cevap:
+      { "id": 1, "fileName": "...", "fileUrl": "...", "fileType": "...", "fileSize": 1024, "createdTime": "..." }
+    Olasi hata:
+      Not bulunamadi veya bu islem icin yetkiniz yok.
+
+  DELETE /api/pages/{pageId}/attachments/{attachmentId}
+    Auth: gerekli
+    Basarili cevap:
+      { "message": "Dosya Silme Basarili" }
+    Olasi hatalar:
+      Dosya Bulunamadi.
+      Bu dosya belirtilen nota ait degil!
+
 Group endpointleri:
   POST /api/groups/create
     Auth: gerekli
@@ -593,6 +696,21 @@ Group endpointleri:
     Olasi hata:
       You are not member of this group!
 
+AI Chat endpointi:
+  POST /api/chat
+    Auth: gerekli
+    Body:
+      {
+        "message": "Notlar hakkinda ne dusunuyorsun?",
+        "pageIds": [1, 2, 3]
+      }
+    Basarili cevap:
+      { "response": "AI tarafindan olusturulan yanit..." }
+    Aciklama:
+      pageIds alani istege baglidir. Bos liste gonderilirse AI genel sohbet yurutur.
+      Kullanici kendi notlarina veya uyesi oldugu gruptaki notlara danisabilir.
+      Dosya URL'leri multimodal olarak Gemini'ye gonderilir.
+
 Validation notlari:
   - UserRequest:
     name zorunlu, max 50
@@ -610,9 +728,11 @@ Validation notlari:
   - JoinRequest:
     groupName zorunlu
     password zorunlu
+  - ChatRequest:
+    message zorunlu
 
 Hata cevap formati:
-  RuntimeException / IllegalArgumentException:
+  RuntimeException / IllegalArgumentException / SecurityException:
     HTTP 400
     {
       "error": "hata mesaji",

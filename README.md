@@ -1,6 +1,6 @@
 # NoteP
 
-NoteP, Spring Boot ile gelistirilmis JWT tabanli bir not ve grup yonetimi backend projesidir. Kullanici kaydi/girisi, kisisel not olusturma, notlari listeleme, guncelleme, silme, notlari sifreli gruplara ekleme ve dosya (attachment) yukleme gibi temel islemleri destekler.
+NoteP, Spring Boot ile gelistirilmis JWT tabanli bir not ve grup yonetimi backend projesidir. Kullanici kaydi/girisi, kisisel not olusturma, notlari listeleme, guncelleme, silme, notlari sifreli gruplara ekleme, dosya (attachment) yukleme ve yapay zeka destekli sohbet (Google Gemini) gibi temel islemleri destekler.
 
 ## Ozellikler
 
@@ -15,20 +15,22 @@ NoteP, Spring Boot ile gelistirilmis JWT tabanli bir not ve grup yonetimi backen
 - DTO tabanli request/response modeli
 - Bean Validation destegi
 - Swagger/OpenAPI dokumantasyonu
+- **Google Gemini AI ile akilli sohbet** (notlara baglamla soru sorabilme, dosya iceriklerini analiz etme)
 
 ## Teknolojiler
 
 - Java 21
-- Spring Boot 4.0.3
+- Spring Boot 3.3.4
 - Spring Web MVC
 - Spring Security
 - Spring Data JPA
 - Spring Data REST
 - MySQL / PostgreSQL
-- JJWT
-- Springdoc OpenAPI / Swagger UI
+- JJWT 0.12.5
+- Springdoc OpenAPI 2.6.0 / Swagger UI
 - Lombok
 - AWS SDK S3 (Supabase S3 uyumlu API)
+- **Spring AI 1.1.0-M3 (Google Gemini 2.5 Flash)**
 - Maven
 
 ## Gereksinimler
@@ -36,6 +38,7 @@ NoteP, Spring Boot ile gelistirilmis JWT tabanli bir not ve grup yonetimi backen
 - Java 21 veya uzeri
 - Maven Wrapper proje icinde mevcut oldugu icin ayrica Maven kurulu olmasi zorunlu degildir
 - MySQL veya PostgreSQL Server
+- **Google Gemini API anahtari** (AI sohbet ozelligi icin, opsiyonel)
 
 ## Konfigurasyon
 
@@ -60,6 +63,10 @@ supabase.s3.bucket-name=notep-attachments
 
 spring.servlet.multipart.max-file-size=10MB
 spring.servlet.multipart.max-request-size=15MB
+
+# Spring AI - Google Gemini
+spring.ai.google.genai.api-key=${GOOGLE_GENAI_API_KEY}
+spring.ai.google.genai.chat.options.model=gemini-2.5-flash
 ```
 
 Not: Render gibi ortamlarda PostgreSQL kullanilir. O durumda `spring.datasource.url`, `spring.datasource.username` ve `spring.datasource.password` degerleri environment variable olarak verilmelidir.
@@ -210,6 +217,34 @@ Join group request ornegi:
 }
 ```
 
+### AI Chat (Yeni)
+
+| Method | Endpoint | Aciklama |
+| --- | --- | --- |
+| POST | `/api/chat` | Google Gemini AI ile not baglaminda sohbet |
+
+Chat request ornegi:
+
+```json
+{
+  "message": "Bu notlar hakkinda ne dusunuyorsun?",
+  "pageIds": [1, 2, 3]
+}
+```
+
+Basarili cevap:
+
+```json
+{
+  "response": "Notlarinizi inceledim... (AI tarafindan olusturulan yanit)"
+}
+```
+
+- `pageIds` alani istege baglidir. Bos liste gonderilirse AI genel sohbet yurutur.
+- Kullanici kendi notlarina veya uyesi oldugu gruptaki notlara danisabilir.
+- Dosya URL'leri (resim, PDF vb.) multimodal olarak Gemini'ye gonderilir.
+- AI her zaman Turkce yanit verir.
+
 ## Test
 
 ```bash
@@ -221,8 +256,9 @@ Join group request ornegi:
 ```text
 src/main/java/com/example/demo
   AuthenticationElements/   JWT, login request/response ve filtreler
-  Bussiness/                Servis katmani (UserService, PageService, GroupService, IStorageService, SupabaseServiceImpl)
-  Controllers/              REST controller siniflari
+  Bussiness/                Servis katmani (UserService, PageService, GroupService, IStorageService,
+                            SupabaseServiceImpl, IAiService, GeminiServiceImpl, ChatService)
+  Controllers/              REST controller siniflari (UserController, PageController, GroupController, ChatController)
   DTOs/                     Request/response modelleri ve mapper siniflari
   DataAccess/               Repository arayuzleri
   Entities/                 JPA entity siniflari (User, Page, Group, Attachment)
@@ -240,3 +276,5 @@ src/main/java/com/example/demo
 - URL'lerde cift slash kullanilmamalidir. Ornegin `//v3/api-docs` Spring Security tarafindan reddedilebilir.
 - Dosya yuklemeleri Supabase S3 uyumlu storage uzerinde `pages/{pageId}/` klasorune kaydedilir.
 - Dosya boyutu siniri: max 10MB (tek dosya), max 15MB (toplam istek).
+- AI sohbet ozelligi icin `GOOGLE_GENAI_API_KEY` environment variable olarak tanimlanmalidir.
+- Gemini 2.5 Flash modeli kullanilmaktadir.

@@ -6,10 +6,10 @@
 
 ## 1. PROJECT OVERVIEW
 
-**NoteP** is a Spring Boot backend application for note-taking and group management. It allows users to register/login, create personal notes, organize notes into password-protected groups, and collaborate with other users.
+**NoteP** is a Spring Boot backend application for note-taking and group management. It allows users to register/login, create personal notes, organize notes into password-protected groups, collaborate with other users, and chat with an AI assistant (Google Gemini) that has context of the user's notes.
 
 - **Java Version:** 21
-- **Spring Boot Version:** 4.0.3
+- **Spring Boot Version:** 3.3.4
 - **Build Tool:** Maven (with Maven Wrapper: `mvnw` / `mvnw.cmd`)
 - **Base Package:** `com.example.demo`
 - **Main Class:** `com.example.demo.NotePApplication`
@@ -20,13 +20,14 @@
 
 | Category            | Technology                                      |
 | ------------------- | ----------------------------------------------- |
-| Framework           | Spring Boot 4.0.3                               |
+| Framework           | Spring Boot 3.3.4                               |
 | Web Layer           | Spring Web MVC (REST)                           |
 | Security            | Spring Security + JWT (jjwt 0.12.5)             |
 | Database            | JPA / Hibernate                                 |
 | Database Drivers    | MySQL (local), PostgreSQL (production/Render)   |
 | Validation          | Hibernate Validator (Bean Validation)           |
-| API Documentation   | Springdoc OpenAPI 3.0.3 (Swagger UI)            |
+| API Documentation   | Springdoc OpenAPI 2.6.0 (Swagger UI)            |
+| AI Integration      | Spring AI 1.1.0-M3 + Google Gemini 2.5 Flash    |
 | File Storage        | Supabase S3-compatible API (AWS SDK S3 v2)      |
 | Testing             | Spring Boot Starter Test                        |
 | Utility             | Lombok (on Attachment entity)                   |
@@ -48,7 +49,7 @@ spring.datasource.password=${DB_PASSWORD:mirza6445}
 spring.datasource.driver-class-name=   # Auto-detected from URL
 spring.jpa.database-platform=${DB_DIALECT:org.hibernate.dialect.MySQLDialect}
 spring.jpa.hibernate.ddl-auto=update
-server.port=${PORT:8080}
+server.port=${PORT:8081}
 ```
 
 ### Tables
@@ -128,6 +129,9 @@ public class Page {
 
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "group_id")
     Group group;       // nullable - a page may not be in any group
+    
+    @OneToMany(mappedBy = "page", cascade = CascadeType.ALL, orphanRemoval = true)
+    List<Attachment> attachments = new ArrayList<>();
 }
 ```
 
@@ -213,12 +217,16 @@ src/main/java/com/example/demo/
 │   ├── GroupService.java      ← Group CRUD, membership, page management (join by name+password)
 │   ├── PageService.java       ← Page CRUD, group assignment, file attachment management
 │   ├── IStorageService.java   ← Interface for file storage operations
-│   └── SupabaseServiceImpl.java ← Supabase S3 implementation of IStorageService
+│   ├── SupabaseServiceImpl.java ← Supabase S3 implementation of IStorageService
+│   ├── IAiService.java        ← Interface for AI chat response generation
+│   ├── GeminiServiceImpl.java ← Google Gemini implementation of IAiService (uses Spring AI ChatModel)
+│   └── ChatService.java       ← Orchestrates AI chat with page context retrieval
 │
 ├── Controllers/               ← REST endpoints
 │   ├── UserController.java    ← /api/auth/**
 │   ├── PageController.java    ← /api/pages/**
-│   └── GroupController.java   ← /api/groups/**
+│   ├── GroupController.java   ← /api/groups/**
+│   └── ChatController.java    ← /api/chat (AI chat with note context)
 │
 ├── DTOs/                      ← Data Transfer Objects
 │   ├── IMapper.java           ← Generic mapper interface: <Response, Entity> → toResponse(Entity)
@@ -232,6 +240,7 @@ src/main/java/com/example/demo/
 │   ├── JoinRequest.java       ← Join group payload (groupName + password)
 │   ├── AttachmentRequest.java ← Attachment creation payload
 │   ├── AttachmentResponse.java ← Attachment output (id, fileName, fileUrl, fileType, fileSize, createdTime)
+│   ├── ChatRequest.java       ← AI chat payload (message + pageIds list)
 │   ├── UserMapper.java        ← User ↔ UserResponse/UserRequest
 │   ├── PageMapper.java        ← Page ↔ PageResponse/PageRequest
 │   ├── GroupMapper.java       ← Group ↔ GroupResponse/GroupRequest
@@ -239,7 +248,8 @@ src/main/java/com/example/demo/
 │
 ├── DataAccess/                ← Spring Data JPA Repositories
 │   ├── UserRepository.java    ← findByEMail, existsByEMailAndName, updatePasswordByEmail (@Modifying @Query)
-│   ├── PageRepository.java    ← findByIdAndUserId, findByUserId, findByGroupId, findByUserIdAndGroupId
+│   ├── PageRepository.java    ← findByIdAndUserId, findByUserId, findByGroupId, findByUserIdAndGroupId,
+│   │                            findByIdAndUserOrGroupMember (@Query with LEFT JOIN for group member access)
 │   ├── GroupRepository.java   ← findByName, findByMembersId, existsByIdAndMembersId
 │   └── AttachmentRepository.java ← findByPageId
 │
@@ -613,6 +623,46 @@ Note: This only returns groups the current user is a member of. Pages list may b
 ```
 This endpoint allows any **group member** (not just the page owner) to update a page that is part of a group.
 
+### 6.4 Chat Endpoints (`/api/chat/`) - All require JWT
+
+| Method | Endpoint     | Description                                                                 |
+| ------ | ------------ | --------------------------------------------------------------------------- |
+| POST   | `/api/chat`  | Send a message to the AI assistant with optional note context               |
+
+#### POST `/api/chat`
+```json
+// Request
+{
+  "message": "Bu notlar hakkında ne düşünüyorsun?",
+  "pageIds": [1, 2, 3]
+}
+// Success Response (200)
+{ "response": "Notlarınızı inceledim... (AI generated response)" }
+
+// Request (without context - general chat)
+{
+  "message": "Merhaba, nasılsın?",
+  "pageIds": []
+}
+// Success Response (200)
+{ "response": "Merhaba! Ben NoteP asistanıyım... (AI generated response)" }
+```
+
+- **Auth:** Required (JWT token)
+- **Request body:** `ChatRequest` record with fields:
+  - `message` (String, @NotBlank) - The user's message
+  - `pageIds` (List<Long>, nullable) - Optional list of page IDs to use as context
+- **How it works:**
+  1. `ChatController` receives the `ChatRequest`
+  2. `ChatService.handleChatWithContext()` retrieves authenticated user
+  3. For each page ID, it fetches the page using `PageRepository.findByIdAndUserOrGroupMember()` (allows access if user owns the page OR is a member of the page's group)
+  4. Creates context objects containing title, content, and file URLs for each page
+  5. Passes context to `IAiService.generateResponse()` 
+  6. `GeminiServiceImpl` implements the AI service using Spring AI's `ChatModel` (Google Gemini 2.5 Flash)
+  7. The system prompt instructs the AI to act as NoteP's smart assistant, answering in Turkish
+  8. File URLs from attachments are loaded as `Media` objects (images, PDFs, etc.) and sent to Gemini for multimodal understanding
+- **Validation:** `message` field cannot be blank (`@NotBlank`)
+
 ---
 
 ## 7. VALIDATION RULES
@@ -630,6 +680,7 @@ This endpoint allows any **group member** (not just the page owner) to update a 
 |                      | password  | @NotBlank                            |
 | **JoinRequest**      | groupName | @NotBlank                            |
 |                      | password  | @NotBlank                            |
+| **ChatRequest**      | message   | @NotBlank                            |
 
 ---
 
@@ -644,13 +695,14 @@ Handled by `GlobalExceptionHandler.java` (a `@ControllerAdvice` class):
 | Exception (generic)     | 500         | `{ "error": "Internal Server Error", "status": 500, "path": "..." }` |
 | No/invalid JWT token    | 401/403     | Handled by Spring Security (not custom handler) |
 | ResourceNotFoundException | 400       | `{ "error": "<message>", "status": 400, "path": "..." }` |
+| SecurityException        | 400         | `{ "error": "<message>", "status": 400, "path": "..." }` (used in ChatService) |
 
 ---
 
 ## 9. SWAGGER / OPENAPI
 
-- **URL:** `http://localhost:8080/swagger-ui.html`
-- **JSON Spec:** `http://localhost:8080/v3/api-docs`
+- **URL:** `http://localhost:8081/swagger-ui.html`
+- **JSON Spec:** `http://localhost:8081/v3/api-docs`
 - **Config file:** `OpenApiConfig.java`
 - **Auth method:** Bearer JWT (configured via SecurityScheme in OpenApiConfig)
 - **Security:** Swagger endpoints are `permitAll()` in SecurityConfig
@@ -681,7 +733,7 @@ Handled by `GlobalExceptionHandler.java` (a `@ControllerAdvice` class):
 
 ### Production (Render)
 - Deployed on Render.com with PostgreSQL
-- Environment variables: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `PORT`, `jwt.secretSTR`
+- Environment variables: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `PORT`, `jwt.secretSTR`, `GOOGLE_GENAI_API_KEY`
 - Automatic deploy from GitHub on push
 
 ### Local Run
@@ -733,6 +785,12 @@ Handled by `GlobalExceptionHandler.java` (a `@ControllerAdvice` class):
 - Users can only add their own pages to groups
 - Delete check: verifies `page.getUser().geteMail().equals(currentUserEMail)`
 
+### Page Access for Chat
+- `ChatService` uses `PageRepository.findByIdAndUserOrGroupMember()` which allows page access if:
+  - The user owns the page, OR
+  - The user is a member of the group the page belongs to
+- This is implemented via a custom JPQL query with LEFT JOIN
+
 ### Group Membership & Security
 - When creating a group, the creator is automatically added as a member
 - Group passwords are BCrypt-hashed
@@ -763,6 +821,19 @@ Handled by `GlobalExceptionHandler.java` (a `@ControllerAdvice` class):
 2. Service creates `new Page(dto.getTitle(), dto.getContent())` (not using mapper)
 3. Sets `page.setUser(null)` then `page.setUser(authenticatedUser)`
 4. Saves via `pageRepository.save(page)`
+
+### AI Chat Data Flow
+1. Controller receives `ChatRequest` (message + optional pageIds)
+2. `ChatService` retrieves authenticated user
+3. For each pageId, fetches the page (checks ownership OR group membership via `findByIdAndUserOrGroupMember`)
+4. Gathers context: title, content, and file attachment URLs
+5. Calls `IAiService.generateResponse(userMessage, contexts)`
+6. `GeminiServiceImpl` creates:
+   - System prompt (Turkish, instructs AI to be NoteP assistant)
+   - Context text from note content
+   - Media objects from attachment file URLs (images, PDFs, etc.)
+7. Sends to Google Gemini 2.5 Flash via Spring AI `ChatModel.call()`
+8. Returns response text
 
 ---
 
@@ -853,6 +924,67 @@ if (groupRepository.existsByIdAndMembersId(groupId, userId)) {
 void updatePasswordByEmail(@Param("eMail") String eMail, @Param("password") String password);
 ```
 
+### How AI chat works with page context:
+```java
+// ChatService.java
+@Transactional(readOnly = true)
+public String handleChatWithContext(String userMessage, List<Long> pageIds) {
+    User u = getAuthanticatedUser();
+    List<Map<String, Object>> contexts = new ArrayList<>();
+    if (pageIds != null && !pageIds.isEmpty()) {
+        for (Long pageId : pageIds) {
+            Page page = pageRepository.findByIdAndUserOrGroupMember(pageId, u.getId())
+                .orElseThrow(() -> new SecurityException("Not bulunamadı! Id: " + pageId));
+            Map<String, Object> context = new HashMap<>();
+            context.put("title", page.getTitle());
+            context.put("content", page.getContent());
+            List<String> fileUrls = new ArrayList<>();
+            if (page.getAttachments() != null) {
+                for (Attachment attachment : page.getAttachments()) {
+                    fileUrls.add(attachment.getFileUrl());
+                }
+            }
+            context.put("fileUrls", fileUrls);
+            contexts.add(context);
+        }
+    }
+    return aiService.generateResponse(userMessage, contexts);
+}
+```
+
+### How Gemini generates AI responses:
+```java
+// GeminiServiceImpl.java - system prompt
+String systemInstruction = """
+    Sen NoteP uygulamasının akıllı asistanısın.
+    Sana kullanıcıya ait notların içerikleri ve bu notlara eklenmiş olan dosyaların internet adresleri (URL) sağlanacaktır.
+    ...
+    Her zaman nazik, net ve Türkçe yanıt ver.
+    """;
+
+// Creates system prompt + context
+SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(systemInstruction + "\nBağlam:\n" + contextBuilder.toString());
+Message systemMessage = systemPromptTemplate.createMessage();
+
+// Creates user message with optional media (images, PDFs from attachment URLs)
+UserMessage userMediaMessage = new UserMessage(userMessage);
+if (!mediaList.isEmpty()) {
+    userMediaMessage.getMedia().addAll(mediaList);
+}
+
+// Calls Gemini
+Prompt prompt = new Prompt(List.of(systemMessage, userMediaMessage));
+return chatModel.call(prompt).getResult().getOutput().getText();
+```
+
+### Page repository query for chat access:
+```java
+// PageRepository.java
+@Query("SELECT p FROM Page p LEFT JOIN p.group g LEFT JOIN g.members m "
+        + "WHERE p.id = :pageId AND (p.user.id = :userId OR m.id = :userId)")
+Optional<Page> findByIdAndUserOrGroupMember(@Param("pageId") Long pageId, @Param("userId") Long userId);
+```
+
 ---
 
 ## 15. RESPONSE FORMATS SUMMARY
@@ -862,6 +994,7 @@ void updatePasswordByEmail(@Param("eMail") String eMail, @Param("password") Stri
 - **Single object:** Direct JSON object (e.g., UserResponse, GroupResponse)
 - **List:** JSON array of objects
 - **Login:** **Raw string** (the JWT token itself, NOT wrapped in JSON!)
+- **Chat:** `{ "response": "...AI generated text..." }`
 
 ### Error Responses
 All errors follow this pattern (except Spring Security errors):
@@ -897,6 +1030,7 @@ All errors follow this pattern (except Spring Security errors):
 - "Page is not exist or You are not owner." → Page not found or not owned
 - "Page doesn't have a group" → Page not associated with any group
 - "This group doesn't exist!" → Group not found (by ID)
+- "Not bulunamadı!" → Page not found (ChatService)
 
 ---
 
@@ -912,21 +1046,36 @@ spring.jpa.database-platform=${DB_DIALECT:org.hibernate.dialect.MySQLDialect}
 spring.jpa.hibernate.ddl-auto=update
 spring.jpa.show-sql=true
 spring.jpa.properties.hibernate.format_sql=true
-server.port=${PORT:8080}
+server.port=${PORT:8081}
 jwt.secretSTR=230316056S215M457R154Z262251962517m\u0131rza
 logging.level.org.hibernate.orm.jdbc.bind=TRACE
 logging.level.org.springframework.web=DEBUG
 logging.level.org.springframework.security=DEBUG
 springdoc.enable-data-rest=false
+
+# Supabase Storage (S3 API)
+supabase.s3.endpoint=https://tkubibnxnxpggbfgknky.supabase.co/storage/v1/s3
+supabase.s3.region=eu-central-1
+supabase.s3.access-key=...
+supabase.s3.secret-key=...
+supabase.s3.bucket-name=notep-attachments
+
+# File Upload Limits
+spring.servlet.multipart.max-file-size=10MB
+spring.servlet.multipart.max-request-size=15MB
+
+# Spring AI - Google Gemini Configuration
+spring.ai.google.genai.api-key=${GOOGLE_GENAI_API_KEY}
+spring.ai.google.genai.chat.options.model=gemini-2.5-flash
 ```
 
 ---
 
 ## 17. TO-DO LIST
 - [ ] Implement many-to-many relationship between Page and Group (a page should be able to belong to multiple groups)
-- [ ] Review and fix id-parameterized endpoints (done: join endpoint changed from `/join/{id}` to `/join`)
 - [x] Fix duplicate variable names (name, email) in repository operations
 - [ ] When user profile info is updated, pages and group components belonging to that user should also be updated (currently can get "user not found with email" errors)
+- [ ] Security issue: If a user is a group member, they can modify any page by guessing the page ID, regardless of group association
 
 ---
 
@@ -934,7 +1083,7 @@ springdoc.enable-data-rest=false
 
 For a frontend developer building against this API:
 
-1. **Base URL (local):** `http://localhost:8080`
+1. **Base URL (local):** `http://localhost:8081`
 2. **Always use `Content-Type: application/json` header**
 3. **Login flow:** `POST /api/auth/login` → response is a **raw string** (the JWT), store it as-is
 4. **Auth header:** `Authorization: Bearer <token>` for all protected endpoints
@@ -944,6 +1093,8 @@ For a frontend developer building against this API:
 8. **Error handling:** All business errors return HTTP 400 with JSON body containing `error`, `status`, `path`
 9. **Validation errors:** Returned as HTTP 400 (handled by Spring)
 10. **Join group flow:** `POST /api/groups/join` with body `{ "groupName": "...", "password": "..." }` (NOT `/join/{id}`)
+11. **AI Chat flow:** `POST /api/chat` with body `{ "message": "...", "pageIds": [1, 2] }` (pageIds is optional) → response is `{ "response": "..." }`
+12. **File uploads:** `POST /api/pages/{pageId}/attachments` with `Content-Type: multipart/form-data`, field name: `file`. Max 10MB per file, 15MB per request. Files stored in Supabase S3.
 
 ---
 
