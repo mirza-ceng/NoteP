@@ -156,7 +156,8 @@ public class GroupService {
         Long userId = u.getId();
         if (groupRepository.existsByIdAndMembersId(groupId, userId)) {
 
-            Page originPage = pageRepository.findById(pageId).orElseThrow(() -> new ResourceNotFoundException("Page not found "));
+            Page originPage = pageRepository.findByIdAndUserId(pageId, userId).orElseThrow( //owner kontrolü
+                    () -> new ResourceNotFoundException("Page not found "));
 
             pageMapper.updateEntityWithResponse(originPage, pageReq);
 
@@ -167,7 +168,5 @@ public class GroupService {
         }
 
     }
-    
-    
-    
+
 }

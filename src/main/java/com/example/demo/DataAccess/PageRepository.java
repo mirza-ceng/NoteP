@@ -8,6 +8,8 @@ import com.example.demo.Entities.Page;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /**
  *
@@ -23,4 +25,7 @@ public interface PageRepository extends JpaRepository<Page, Long> {
 
     List<Page> findByUserIdAndGroupId(Long userId, Long groupId);
 
+    @Query("SELECT p FROM Page p LEFT JOIN p.group g LEFT JOIN g.members m "
+            + "WHERE p.id = :pageId AND (p.user.id = :userId OR m.id = :userId)")
+    Optional<Page> findByIdAndUserOrGroupMember(@Param("pageId") Long pageId, @Param("userId") Long userId);
 }

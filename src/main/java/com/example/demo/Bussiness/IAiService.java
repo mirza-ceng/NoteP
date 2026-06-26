@@ -22,6 +22,6 @@ public interface IAiService {
      * içeren paket listesi
      * @return Yapay zekanın ürettiği metin yanıtı
      */
-    String generateResponse(String userMessage, List<Map<String, Object>> context);
+    String generateResponse(String userMessage, List<Map<String, Object>> contexts);
 
 }

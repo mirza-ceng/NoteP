@@ -94,7 +94,8 @@ public class GroupController {
     //GROUP PAGE 
     @PutMapping("/{id}/pages/{pageId}")//groupid--pageid
     public ResponseEntity<Map<String, String>> updatePageOfGroup(@PathVariable Long id, @PathVariable Long pageId, @Valid @RequestBody PageRequest dto) {
-
+        /*!!! GUVENLIK SORUNU: Eger istegi atan kullanıcı grup uyesi ise  gruba bakılmaksızın 
+istedigi herhangi bir page in ıd sini tahmin ederek degiştirebiliyor*/
         groupService.updatePageOfGroup(id, pageId, dto);
         Map<String, String> response = new HashMap<>();
         response.put("message", "Update başarılı.");
@@ -102,7 +103,4 @@ public class GroupController {
 
     }
 
-   
-    
-   
 }
