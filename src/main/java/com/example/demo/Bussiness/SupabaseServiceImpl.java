@@ -43,6 +43,7 @@ public class SupabaseServiceImpl implements IStorageService {
                     .bucket(bucketName)
                     .key(key)
                     .contentType(file.getContentType())
+                    .contentLength(file.getSize())
                     .build();
 
             s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));

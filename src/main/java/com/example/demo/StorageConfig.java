@@ -37,6 +37,7 @@ public class StorageConfig {
         S3Configuration serviceConfiguration = S3Configuration.builder()
                 .pathStyleAccessEnabled(true)
                 .chunkedEncodingEnabled(false) // Ekstra el sıkışma sorunlarını önlemek için
+                .checksumValidationEnabled(false)
                 .build();
         
         return S3Client.builder().endpointOverride(URI.create(endpoint))
