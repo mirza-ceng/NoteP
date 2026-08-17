@@ -4,18 +4,18 @@
  */
 package com.example.demo.DTOs;
 
-import jakarta.validation.constraints.NotBlank;
-import java.util.List;
+import com.example.demo.Entities.Role;
+import java.time.LocalDateTime;
 
 /**
  *
  * @author 2005m
  */
-public record ChatRequest(
-        @NotBlank(message = "Mesaj alanı bos bırakılamaz!!")
-        String message,
-        List<Long> pageIds,
-        Long conversationId
+public record ChatMessageResponse(
+        Long id,
+        Role role,
+        String content,
+        LocalDateTime createdDate
         ) {
 
 }

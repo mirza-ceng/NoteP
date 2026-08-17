@@ -4,18 +4,13 @@
  */
 package com.example.demo.DTOs;
 
-import jakarta.validation.constraints.NotBlank;
-import java.util.List;
-
 /**
  *
  * @author 2005m
  */
-public record ChatRequest(
-        @NotBlank(message = "Mesaj alanı bos bırakılamaz!!")
-        String message,
-        List<Long> pageIds,
-        Long conversationId
+public record ChatResponse(
+        Long conversationId,
+        String response
         ) {
 
 }

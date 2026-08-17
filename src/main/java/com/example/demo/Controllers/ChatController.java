@@ -6,10 +6,15 @@ package com.example.demo.Controllers;
 
 import com.example.demo.DTOs.ChatRequest;
 import com.example.demo.Bussiness.ChatService;
+import com.example.demo.DTOs.ChatMessageResponse;
+import com.example.demo.DTOs.ChatResponse;
+import com.example.demo.DTOs.ConversationSummaryResponse;
+import com.example.demo.Entities.ChatMessage;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
+import java.util.List;
 
 /**
  *
@@ -27,10 +32,25 @@ public class ChatController {
     }
 
     @PostMapping
-    public ResponseEntity<Map<String, String>> chatWithContext(@Valid @RequestBody ChatRequest chatRequest) {
+    public ResponseEntity<ChatResponse> chatWithContext(@Valid @RequestBody ChatRequest chatRequest) {
+        ChatResponse chatResponse = chatService.handleChatWithContext(chatRequest.message(), chatRequest.pageIds(), chatRequest.conversationId());
+        return ResponseEntity.ok(chatResponse);
+    }
 
-        String aiResponse = chatService.handleChatWithContext(chatRequest.message(), chatRequest.pageIds());
-        return ResponseEntity.ok(Map.of("response", aiResponse));
+    @GetMapping("/conversations")
+    public ResponseEntity<List<ConversationSummaryResponse>> getUserConversations() {
+        return ResponseEntity.ok(chatService.getUserConversations());
+    }
+
+    @GetMapping("/conversations/{id}")
+    public ResponseEntity<List<ChatMessageResponse>> getConversationMessages(@PathVariable Long id) {
+        return ResponseEntity.ok(chatService.getConversationMessages(id));
+
+    }
+    @DeleteMapping("conversations/{id}")
+    public ResponseEntity<Void> deleteConversation(@PathVariable Long id){
+    chatService.deleteConversation(id);
+        return ResponseEntity.noContent().build();
     }
 
 }

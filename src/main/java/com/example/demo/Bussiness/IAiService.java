@@ -4,6 +4,7 @@
  */
 package com.example.demo.Bussiness;
 
+import com.example.demo.Entities.ChatMessage;
 import java.util.List;
 import java.util.Map;
 
@@ -22,6 +23,6 @@ public interface IAiService {
      * içeren paket listesi
      * @return Yapay zekanın ürettiği metin yanıtı
      */
-    String generateResponse(String userMessage, List<Map<String, Object>> contexts);
+    String generateResponse(String userMessage, List<Map<String, Object>> contexts,List<ChatMessage> history);
 
 }

@@ -4,6 +4,9 @@
  */
 package com.example.demo.Bussiness;
 
+import com.example.demo.DTOs.ChatMessageResponse;
+import com.example.demo.Entities.ChatMessage;
+import com.example.demo.Entities.Role;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.SystemPromptTemplate;
@@ -17,6 +20,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.springframework.ai.chat.messages.AssistantMessage;
 
 /**
  *
@@ -32,7 +36,7 @@ public class GeminiServiceImpl implements IAiService {
     }
 
     @Override
-    public String generateResponse(String userMessage, List<Map<String, Object>> contexts) {
+    public String generateResponse(String userMessage, List<Map<String, Object>> contexts, List<ChatMessage> history) {
         String systemInstruction = """
     Sen NoteP uygulamasının akıllı asistanısın.
     Sana kullanıcıya ait notların içerikleri ve bu notlara eklenmiş olan dosyaların internet adresleri (URL) sağlanacaktır.
@@ -46,9 +50,11 @@ public class GeminiServiceImpl implements IAiService {
 
         List<Media> mediaList = new ArrayList<>();
         StringBuilder contextBuilder = new StringBuilder();
+
         if (contexts == null || contexts.isEmpty()) {
             contextBuilder.append("Kullanıcı şu an herhangi bir not seçmedi. Genel bir sohbet yürütüyorsun.");
         } else {
+
             for (int i = 0; i < contexts.size(); i++) {
                 Map<String, Object> ctx = contexts.get(i);
 
@@ -89,17 +95,29 @@ public class GeminiServiceImpl implements IAiService {
             }
 
         }
+
+        List<Message> messages = new ArrayList<>();
         SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(systemInstruction + "\nBağlam:\n" + contextBuilder.toString());
         Message systemMessage = systemPromptTemplate.createMessage();
+        messages.add(systemMessage);
+
+        if (history != null && !history.isEmpty()) {
+            for (ChatMessage chatMessage : history) {
+                if (chatMessage.getRole() == Role.USER) {
+                    messages.add(new UserMessage(chatMessage.getContent()));
+                } else if (chatMessage.getRole() == Role.ASSISTANT) {
+                    messages.add(new AssistantMessage(chatMessage.getContent()));
+                }
+            }
+        }
 
         UserMessage userMediaMessage = new UserMessage(userMessage);
         if (!mediaList.isEmpty()) {
             userMediaMessage.getMedia().addAll(mediaList);
         }
-        List<Message> messages = List.of(systemMessage, userMediaMessage);
+        messages.add(userMediaMessage);
 
         Prompt prompt = new Prompt(messages);
-        System.out.println("------------------------------------------------------------HATA-----------------------------------------");
         return chatModel.call(prompt).getResult().getOutput().getText();
     }
 
