@@ -347,7 +347,11 @@
      - Başlık: Mesajın ilk 30 karakteri + `"..."` (mesaj 30 karakterden uzunsa).
      - Örn: `"Bu notlar hakkında ne düşünüyorsun?"` → başlık `"Bu notlar hakkında ne düşünüyorsun?"`
 
-3. **Not Bağlamlarını Toplama:**
+3. **Notları Conversation'a Bağlama:**
+   - `pageRepository.findAllById(pageIds)` ile seçilen notlar çekilir.
+   - `conversation.setPages(pages)` ile notlar `Conversation.pages` ilişkisine kaydedilir (ManyToMany).
+
+4. **Not Bağlamlarını Toplama:**
    - `pageIds` boş veya null ise → bağlam yok (genel sohbet).
    - `pageIds` dolu ise her not için:
      - `findByIdAndUserOrGroupMember(pageId, userId)` ile erişim kontrolü yapılır.
@@ -360,11 +364,11 @@
        { "title": "...", "content": "...", "fileUrls": ["...", "..."] }
        ```
 
-4. **Mesaj Geçmişini Yükleme:**
+5. **Mesaj Geçmişini Yükleme:**
    - Sohbetin **son 20 mesajı** kronolojik sırayla (en eskiden en yeniye) çekilir.
    - Token yönetimi için 20 mesaj sınırı uygulanır.
 
-5. **AI Yanıtı Üretme:**
+6. **AI Yanıtı Üretme:**
    - `IAiService.generateResponse(userMessage, contexts, history)` çağrılır.
    - GeminiServiceImpl:
      - **System Prompt** oluşturur: AI'a NoteP asistanı rolü verilir, Türkçe yanıt vermesi istenir.
@@ -374,11 +378,11 @@
      - **Prompt** oluşturur: `SystemMessage` + geçmiş mesajlar + mevcut kullanıcı mesajı + medyalar.
      - `ChatModel.call(prompt)` ile Gemini 2.5 Flash'a gönderir.
 
-6. **Mesajları Kaydetme:**
+7. **Mesajları Kaydetme:**
    - Kullanıcı mesajı `Role.USER` olarak kaydedilir.
    - AI yanıtı `Role.ASSISTANT` olarak kaydedilir.
 
-7. **Yanıt:**
+8. **Yanıt:**
    ```json
    { "conversationId": 1, "response": "AI yanıt metni" }
    ```
@@ -685,10 +689,11 @@ Proje kodunda tespit edilen iş mantığı açıkları ve riskler:
 
 - **Durum:** Kullanıcı yalnızca parola güncelleyebiliyor; isim, soyisim ve e-posta değiştirilemiyor. E-posta değiştirilemediği için kullanıcılar hesap bilgilerini güncelleyemiyor.
 
-### 11.6 Yeni Sohbette Bağlam Notları İletilmiyor
+### ~~11.6 Yeni Sohbette Bağlam Notları İletilmiyor~~ ✅ DÜZELTİLDİ
 
-- **Durum:** `POST /api/chat` içinde `conversationId` gönderilmeden yeni bir sohbet başlatıldığında, kullanıcı aynı `pageIds` ile devam etmezse bağlam kayboluyor. Conversation-Page ilişkisi (`Conversation.pages`) hiçbir yerde set edilmiyor.
-- **Kod Referansı:** `Conversation` entity'sinde `@ManyToMany List<Page> pages` alanı tanımlı ancak `ChatService` bu alanı hiç kullanmıyor. Notlar yalnızca her istekte `pageIds` ile belirleniyor.
+- **Durum:** `ChatService.handleChatWithContext()` artık `conversation.setPages(pages)` ile seçilen notları `Conversation.pages` ilişkisine kaydediyor.
+- **Çözüm:** `pageRepository.findAllById(pageIds)` ile notlar çekilip `conversation.setPages(pages)` çağrılıyor.
+- **Not:** `findAllById()` erişim kontrolü yapmadan tüm notları çeker; ancak bağlam oluşturma aşamasında `findByIdAndUserOrGroupMember()` ile erişim kontrolü ayrıca yapılmaktadır.
 
 ### 11.7 Medya MIME Tipi Tahmini
 
@@ -721,9 +726,13 @@ Bu üç kavram; kayıt/giriş akışları, not CRUD işlemleri, grup yönetimi, 
 | - | ------- | ------------- | ------------- | ----- |
 | ~~M1~~ | ~~🔴 Yüksek~~ | `GroupService.updatePageOfGroup()` | ~~Grup üyeliği + not sahipliği doğrulanıyor ama notun o gruba ait olduğu kontrol edilmiyor~~ | ✅ **DÜZELTİLDİ** — Artık `findByIdAndUserIdAndGroupId(pageId, userId, groupId)` kullanılıyor; notun hem sahibi hem de belirtilen gruba ait olması doğrulanıyor. |
 | ~~M2~~ | ~~🔴 Yüksek~~ | `GroupService.getPages()` | ~~Üyelik kontrolü yapılmadan grup notları listeleniyor~~ | ✅ **DÜZELTİLDİ** — Artık `existsByIdAndMembersId(id, userId)` ile üyelik kontrolü yapılıyor; üye olmayanlar `"You are not member of this group!"` hatası alıyor. |
+
 | M3 | 🟠 Orta | `UserService.register()` / `UserRepository.existsByEMailAndName()` | E-posta benzersizlik kontrolü tutarsız | ❌ **AÇIK** — Kod `eMail + name` kombinasyonunu kontrol eder ancak DB'de `eMail` sütunu `unique = true`. Aynı e-posta ile farklı isimde kayıt denemesi `DataIntegrityViolationException` fırlatır. (Bölüm 11.3) |
-| M4 | 🟠 Orta | `ChatService.handleChatWithContext()` / `Conversation` | Yeni sohbette `Conversation.pages` (ManyToMany) ilişkisi **hiçbir yerde set edilmiyor** | ❌ **AÇIK** — Kullanıcı `conversationId` olmadan yeni sohbet başlatıp AI'a not bağlamı verirse, bu notlar sohbet oturumuna kaydedilmez. Sonraki isteklerde aynı `pageIds` tekrar gönderilmelidir. (Bölüm 11.6) |
+
+| ~~M4~~ | ~~🟠 Orta~~ | `ChatService.handleChatWithContext()` / `Conversation` | ~~Yeni sohbette `Conversation.pages` (ManyToMany) ilişkisi hiçbir yerde set edilmiyor~~ | ✅ **DÜZELTİLDİ** — Artık `conversation.setPages(pages)` ile seçilen notlar `Conversation.pages` ilişkisine kaydediliyor. (Bölüm 11.6) |
+
 | M5 | 🟠 Orta | `ChatService.handleChatWithContext()` | Yeni sohbet oluşturulduğunda `ChatResponse`'ta **yanlış conversationId dönebiliyor** | ❌ **AÇIK** — Koddaki `return new ChatResponse(conversationId, aiResponse)` ifadesi parametre olarak gelen `conversationId`'yi (null olabilir) döndürür; yeni oluşturulan sohbetin gerçek ID'si (`conversation.getId()`) yerine. Bu, yeni sohbette `conversationId: null` dönmesine yol açar. |
+
 | M6 | 🟡 Düşük | `PageService.deleteById()` | Hata mesajında **yanlış değişken kullanılıyor** | ❌ **AÇIK** — `"Page not found with id: " + eMail` — hata mesajında not ID'si yerine kullanıcının e-postası yazılıyor. (Bölüm 4.4) |
 | M7 | 🟡 Düşük | `GroupService.joinGroup()` | Gruba katılma başarılı olduğunda **group kaydedilmiyor** açıkça | ❌ **AÇIK** — `group.getMembers().add(u)` yapılıyor ancak `groupRepository.save()` çağrılmıyor (`@Transactional` sayesinde JPA dirty-checking ile kaydedilir, ancak işlem açık değilse risk vardır). |
 | M8 | 🟡 Düşük | `GeminiServiceImpl.generateResponse()` | Bilinmeyen dosya uzantıları **varsayılan olarak `image/png`** MIME tipiyle gönderiliyor | ❌ **AÇIK** — `.docx`, `.xlsx` vb. dosyalar yanlış MIME tipiyle AI'a iletilir ve doğru işlenmeyebilir. (Bölüm 11.7) |
@@ -734,15 +743,15 @@ Bu üç kavram; kayıt/giriş akışları, not CRUD işlemleri, grup yönetimi, 
 
 ### Durum Dağılımı
 
-- ✅ **Düzeltildi (2):** M1, M2 — Yüksek öncelikli güvenlik açıkları kapatıldı.
-- 🟠 **Orta (3):** M3, M4, M5 — Veri tutarlılığı ve işlevsellik sorunları (açık).
+- ✅ **Düzeltildi (3):** M1, M2, M4 — Güvenlik açıkları ve veri tutarlılığı sorunları kapatıldı.
+- 🟠 **Orta (2):** M3, M5 — Veri tutarlılığı ve işlevsellik sorunları (açık).
 - 🟡 **Düşük (7):** M6–M12 — Hata mesajı, ilişki bakımı ve iyileştirme önerileri (açık).
 
 ### Kalan En Kritik 3 Düzeltme Önerisi
 
 1. **M5:** `return new ChatResponse(conversation.getId(), aiResponse)` şeklinde düzeltilmeli — böylece yeni sohbette gerçek conversation ID döner.
-2. **M4:** Yeni sohbette seçilen notlar `conversation.getPages().addAll(...)` ile `Conversation.pages` ilişkisine kaydedilmeli.
-3. **M3:** Benzersizlik kontrolü yalnızca e-posta üzerinden yapılmalı (`existsByEMail()`).
+2. **M3:** Benzersizlik kontrolü yalnızca e-posta üzerinden yapılmalı (`existsByEMail()`).
+3. **M6:** `deleteById()` hata mesajındaki `eMail` değişkeni not ID'si ile değiştirilmeli.
 
 ---
 

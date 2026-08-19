@@ -72,8 +72,11 @@ public class ChatService {
         } else {
             String title = userMessage.length() > 30 ? userMessage.substring(0, 30) + "..." : userMessage;
             conversation = new Conversation(u, title);
+            
             conversation = conversationRepository.save(conversation);
         }
+        List<Page> pages=pageRepository.findAllById(pageIds);
+        conversation.setPages(pages);
 
         List<Map<String, Object>> contexts = new ArrayList<>();
         if (pageIds != null && !pageIds.isEmpty()) {
