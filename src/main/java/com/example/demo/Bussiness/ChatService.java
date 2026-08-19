@@ -60,7 +60,6 @@ public class ChatService {
         String eMail = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByEMail(eMail).orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + eMail));
     }
-    
 
     @Transactional
     public ChatResponse handleChatWithContext(String userMessage, List<Long> pageIds, Long conversationId) {
@@ -123,8 +122,10 @@ public class ChatService {
     @Transactional(readOnly = true)
     public List<ChatMessageResponse> getConversationMessages(Long conversationId) {
         User u = getAuthanticatedUser();
-        conversationRepository.findByIdAndUserId(conversationId, u.getId())
-                .orElseThrow(() -> new SecurityException("Oturum bulunamadı veya yetkisiz erişim!"));
+        if (!conversationRepository.existByIdAndUserId(conversationId, u.getId())) {
+            throw new SecurityException("Oturum bulunamadı veya yetkisiz erişim!");
+        }
+
         return chatMessageRepository.findByConversationIdOrderByCreatedDateAsc(conversationId)
                 .stream().map(
                         m -> new ChatMessageResponse(m.getId(), m.getRole(), m.getContent(), m.getCreatedDate())

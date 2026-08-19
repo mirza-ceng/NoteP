@@ -16,6 +16,7 @@ NoteP, Spring Boot ile gelistirilmis JWT tabanli bir not ve grup yonetimi backen
 - Bean Validation destegi
 - Swagger/OpenAPI dokumantasyonu
 - **Google Gemini AI ile akilli sohbet** (notlara baglamla soru sorabilme, dosya iceriklerini analiz etme)
+- **Coklu mesaj (multi-turn) sohbet gecmisi** (Conversation ve ChatMessage entity'leri ile kalici diyalog)
 
 ## Teknolojiler
 
@@ -217,18 +218,22 @@ Join group request ornegi:
 }
 ```
 
-### AI Chat (Yeni)
+### AI Chat
 
 | Method | Endpoint | Aciklama |
 | --- | --- | --- |
-| POST | `/api/chat` | Google Gemini AI ile not baglaminda sohbet |
+| POST | `/api/chat` | Google Gemini AI ile not baglaminda sohbet (coklu mesaj destekli) |
+| GET | `/api/chat/conversations` | Kullanicinin tum diyalog oturumlarini listeleme |
+| GET | `/api/chat/conversations/{id}` | Bir diyalog oturumunun mesaj gecmisini getirme |
+| DELETE | `/api/chat/conversations/{id}` | Bir diyalog oturumunu silme |
 
 Chat request ornegi:
 
 ```json
 {
   "message": "Bu notlar hakkinda ne dusunuyorsun?",
-  "pageIds": [1, 2, 3]
+  "pageIds": [1, 2, 3],
+  "conversationId": 42
 }
 ```
 
@@ -236,14 +241,17 @@ Basarili cevap:
 
 ```json
 {
+  "conversationId": 42,
   "response": "Notlarinizi inceledim... (AI tarafindan olusturulan yanit)"
 }
 ```
 
 - `pageIds` alani istege baglidir. Bos liste gonderilirse AI genel sohbet yurutur.
+- `conversationId` alani istege baglidir. Gonderilmezse yeni bir diyalog oturumu olusturulur ve cevapta `conversationId` olarak donulur.
 - Kullanici kendi notlarina veya uyesi oldugu gruptaki notlara danisabilir.
 - Dosya URL'leri (resim, PDF vb.) multimodal olarak Gemini'ye gonderilir.
 - AI her zaman Turkce yanit verir.
+- Sohbet gecmisinde son 20 mesaj baglam olarak AI'a iletilir.
 
 ## Test
 
@@ -257,11 +265,12 @@ Basarili cevap:
 src/main/java/com/example/demo
   AuthenticationElements/   JWT, login request/response ve filtreler
   Bussiness/                Servis katmani (UserService, PageService, GroupService, IStorageService,
-                            SupabaseServiceImpl, IAiService, GeminiServiceImpl, ChatService)
+                          SupabaseServiceImpl, IAiService, GeminiServiceImpl, ChatService)
   Controllers/              REST controller siniflari (UserController, PageController, GroupController, ChatController)
   DTOs/                     Request/response modelleri ve mapper siniflari
-  DataAccess/               Repository arayuzleri
-  Entities/                 JPA entity siniflari (User, Page, Group, Attachment)
+  DataAccess/               Repository arayuzleri (UserRepository, PageRepository, GroupRepository,
+                          AttachmentRepository, ConversationRepository, ChatMessageRepository)
+  Entities/                 JPA entity siniflari (User, Page, Group, Attachment, Conversation, ChatMessage, Role)
   ExceptionHandling/        Global exception handler
   SecurityConfig.java       Spring Security filter chain yapilandirmasi
   OpenApiConfig.java        Swagger/OpenAPI yapilandirmasi (Bearer JWT)
@@ -278,3 +287,5 @@ src/main/java/com/example/demo
 - Dosya boyutu siniri: max 10MB (tek dosya), max 15MB (toplam istek).
 - AI sohbet ozelligi icin `GOOGLE_GENAI_API_KEY` environment variable olarak tanimlanmalidir.
 - Gemini 2.5 Flash modeli kullanilmaktadir.
+- Coklu mesaj destegi icin `conversation` ve `chat_message` tablolari otomatik olusturulur.
+- Yeni sohbet baslatmak icin `conversationId` alani bos (null) gonderilmeli; mevcut sohbete devam etmek icin ise gecerli bir `conversationId` gonderilmelidir.

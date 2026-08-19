@@ -20,4 +20,6 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
 
     // kullanıcının sadece kendi oturumuna erişmesini garanti eder
     Optional<Conversation> findByIdAndUserId(Long id, Long userId);
+
+    boolean existByIdAndUserId(Long id, Long userId);
 }

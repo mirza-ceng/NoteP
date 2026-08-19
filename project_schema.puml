@@ -41,6 +41,28 @@ package "Entities" {
         - members: List<User>
         - pages: List<Page>
     }
+
+    class Conversation {
+        - id: Long
+        - title: String
+        - createdDate: LocalDateTime
+        - user: User
+        - messages: List<ChatMessage>
+        - pages: List<Page>
+    }
+
+    class ChatMessage {
+        - id: Long
+        - role: Role
+        - content: String
+        - createdDate: LocalDateTime
+        - conversation: Conversation
+    }
+
+    enum Role {
+        USER
+        ASSISTANT
+    }
 }
 
 package "DataAccess" {
@@ -66,6 +88,16 @@ package "DataAccess" {
 
     interface AttachmentRepository extends JpaRepository<Attachment, Long> {
         + findByPageId(pageId: Long): List<Attachment>
+    }
+
+    interface ConversationRepository extends JpaRepository<Conversation, Long> {
+        + findByUserIdOrderByCreatedDateDesc(userId: Long): List<Conversation>
+        + findByIdAndUserId(id: Long, userId: Long): Optional<Conversation>
+    }
+
+    interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
+        + findByConversationIdOrderByCreatedDateAsc(conversationId: Long, pageable: Pageable): List<ChatMessage>
+        + findByConversationIdOrderByCreatedDateAsc(conversationId: Long): List<ChatMessage>
     }
 }
 
@@ -130,12 +162,12 @@ package "Bussiness" {
     }
 
     interface IAiService {
-        + generateResponse(userMessage: String, contexts: List<Map<String, Object>>): String
+        + generateResponse(userMessage: String, contexts: List<Map<String, Object>>, history: List<ChatMessage>): String
     }
 
     class GeminiServiceImpl implements IAiService {
         - chatModel: ChatModel
-        + generateResponse(userMessage: String, contexts: List<Map<String, Object>>): String
+        + generateResponse(userMessage: String, contexts: List<Map<String, Object>>, history: List<ChatMessage>): String
     }
 
     class ChatService {
@@ -143,7 +175,12 @@ package "Bussiness" {
         - userRepository: UserRepository
         - groupRepository: GroupRepository
         - aiService: IAiService
-        + handleChatWithContext(userMessage: String, pageIds: List<Long>): String
+        - conversationRepository: ConversationRepository
+        - chatMessageRepository: ChatMessageRepository
+        + handleChatWithContext(userMessage: String, pageIds: List<Long>, conversationId: Long): ChatResponse
+        + getUserConversations(): List<ConversationSummaryResponse>
+        + getConversationMessages(conversationId: Long): List<ChatMessageResponse>
+        + deleteConversation(conversationId: Long)
         - getAuthanticatedUser(): User
     }
 }
@@ -246,6 +283,25 @@ package "DTOs" {
     record ChatRequest {
         + message: String
         + pageIds: List<Long>
+        + conversationId: Long
+    }
+
+    record ChatResponse {
+        + conversationId: Long
+        + response: String
+    }
+
+    record ChatMessageResponse {
+        + id: Long
+        + role: Role
+        + content: String
+        + createdDate: LocalDateTime
+    }
+
+    record ConversationSummaryResponse {
+        + id: Long
+        + title: String
+        + createdDate: LocalDateTime
     }
 }
 
@@ -283,7 +339,10 @@ package "Controllers" {
 
     class ChatController {
         - chatService: ChatService
-        + chatWithContext(chatRequest: ChatRequest): ResponseEntity<Map<String, String>>
+        + chatWithContext(chatRequest: ChatRequest): ResponseEntity<ChatResponse>
+        + getUserConversations(): ResponseEntity<List<ConversationSummaryResponse>>
+        + getConversationMessages(id: Long): ResponseEntity<List<ChatMessageResponse>>
+        + deleteConversation(id: Long): ResponseEntity<Void>
     }
 }
 
@@ -376,9 +435,13 @@ ChatController --> ChatService
 ChatService --> PageRepository
 ChatService --> UserRepository
 ChatService --> GroupRepository
+ChatService --> ConversationRepository
+ChatService --> ChatMessageRepository
 ChatService --> IAiService
 IAiService <|.. GeminiServiceImpl
 GeminiServiceImpl --> ChatModel
+GeminiServiceImpl --> ChatMessage
+GeminiServiceImpl --> Role
 
 SupabaseServiceImpl ..|> IStorageService
 
@@ -402,13 +465,20 @@ AttachmentMapper --> Attachment
 
 User --> Page : has many
 User --> Group : has many
+User --> Conversation : has many
 Group --> Page : has many
 Group --> User : has many
 
 Page --> User : belongs to
 Page --> Group : belongs to
 Page --> Attachment : has many
+Page --> Conversation : referenced in many
 Attachment --> Page : belongs to
+Conversation --> User : belongs to
+Conversation --> ChatMessage : has many
+Conversation --> Page : references many
+ChatMessage --> Conversation : belongs to
+ChatMessage --> Role : uses
 
 GlobalExceptionHandler --> Controllers : advises
 
@@ -696,20 +766,56 @@ Group endpointleri:
     Olasi hata:
       You are not member of this group!
 
-AI Chat endpointi:
+AI Chat endpointleri (coklu mesaj destekli):
   POST /api/chat
     Auth: gerekli
-    Body:
+    Body (yeni sohbet):
       {
         "message": "Notlar hakkinda ne dusunuyorsun?",
         "pageIds": [1, 2, 3]
       }
+    Body (mevcut sohbete devam):
+      {
+        "message": "Peki ikinci notta ne anlatilmis?",
+        "pageIds": [1, 2, 3],
+        "conversationId": 42
+      }
     Basarili cevap:
-      { "response": "AI tarafindan olusturulan yanit..." }
+      { "conversationId": 42, "response": "AI tarafindan olusturulan yanit..." }
     Aciklama:
       pageIds alani istege baglidir. Bos liste gonderilirse AI genel sohbet yurutur.
+      conversationId alani istege baglidir. Bos gonderilirse yeni oturum olusturulur.
+      Son 20 mesaj AI'a gecmis olarak iletilir.
       Kullanici kendi notlarina veya uyesi oldugu gruptaki notlara danisabilir.
       Dosya URL'leri multimodal olarak Gemini'ye gonderilir.
+
+  GET /api/chat/conversations
+    Auth: gerekli
+    Basarili cevap:
+      [
+        { "id": 1, "title": "Notlar hakkinda...", "createdDate": "2025-06-19T03:00:00" }
+      ]
+    Aciklama:
+      Kullanicinin tum diyalog oturumlarini listeler (yeni->eski).
+
+  GET /api/chat/conversations/{id}
+    Auth: gerekli
+    Basarili cevap:
+      [
+        { "id": 1, "role": "USER", "content": "...", "createdDate": "..." },
+        { "id": 2, "role": "ASSISTANT", "content": "...", "createdDate": "..." }
+      ]
+    Aciklama:
+      Bir oturumun mesaj gecmisini kronolojik sirayla getirir.
+      Yalnizca oturum sahibi erisebilir.
+
+  DELETE /api/chat/conversations/{id}
+    Auth: gerekli
+    Basarili cevap:
+      204 No Content
+    Aciklama:
+      Bir oturumu ve mesajlarini siler.
+      Yalnizca oturum sahibi silebilir.
 
 Validation notlari:
   - UserRequest:

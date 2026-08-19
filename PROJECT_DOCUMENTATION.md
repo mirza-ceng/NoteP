@@ -61,6 +61,9 @@ server.port=${PORT:8081}
 | `app_group`      | Group  | Groups (password-protected) |
 | `group_members`  | (join) | Many-to-many: User ↔ Group |
 | `page_attachment`| Attachment | File attachments for pages |
+| `conversation`   | Conversation | AI chat sessions (multi-turn) |
+| `chat_message`   | ChatMessage | Individual chat messages (USER/ASSISTANT roles) |
+| `conversation_pages` | (join) | Many-to-many: Conversation ↔ Page |
 
 
 ### Column Mappings (Entity → Database)
@@ -89,6 +92,15 @@ server.port=${PORT:8081}
 | Attachment | fileSize | `file_size`      |
 | Attachment | createdTime | `created_time` |
 | Attachment | page     | `page_id` (FK)    |
+| Conversation | id     | `id`              |
+| Conversation | title  | `title`           |
+| Conversation | createdDate | `created_date` |
+| Conversation | user   | `user_id` (FK)    |
+| ChatMessage | id     | `id`              |
+| ChatMessage | role   | `role` (ENUM: USER/ASSISTANT) |
+| ChatMessage | content | `content` (TEXT) |
+| ChatMessage | createdDate | `created_date` |
+| ChatMessage | conversation | `conversation_id` (FK) |
 
 ---
 
@@ -172,16 +184,67 @@ public class Attachment {
 }
 ```
 
+### Conversation Entity (`Entities/Conversation.java`) - *Multi-Turn Chat Session*
+```java
+@Entity @Table(name = "conversation")
+public class Conversation {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY) Long id;
+    @Column(nullable = false) String title = "Yeni Sohbet";
+    @CreationTimestamp @Column(name = "created_date", updatable = false) LocalDateTime createdDate;
+
+    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "user_id", nullable = false)
+    User user;
+
+    @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("createdDate ASC")
+    List<ChatMessage> messages = new ArrayList<>();
+
+    @ManyToMany
+    @JoinTable(name = "conversation_pages",
+        joinColumns = @JoinColumn(name = "conversation_id"),
+        inverseJoinColumns = @JoinColumn(name = "page_id"))
+    List<Page> pages = new ArrayList<>();
+}
+```
+
+### ChatMessage Entity (`Entities/ChatMessage.java`) - *Individual Message in a Conversation*
+```java
+@Entity @Table(name = "chat_message")
+public class ChatMessage {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY) Long id;
+    @Enumerated(EnumType.STRING) @Column(nullable = false, length = 20)
+    Role role;   // USER or ASSISTANT
+    @Lob @Column(nullable = false, columnDefinition = "TEXT") String content;
+    @CreationTimestamp @Column(name = "created_date", updatable = false) LocalDateTime createdDate;
+
+    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "conversation_id", nullable = false)
+    Conversation conversation;
+}
+```
+
+### Role Enum (`Entities/Role.java`)
+```java
+public enum Role {
+    USER,
+    ASSISTANT
+}
+```
+
 ### Summary of Relationships
 
 ```
 User     ──OneToMany──→ Page          (A user has many pages)
 User     ──ManyToMany→ Group          (A user belongs to many groups, a group has many users)
+User     ──OneToMany──→ Conversation  (A user has many chat conversations)
 Group    ──OneToMany──→ Page         (A group has many pages)
 Page     ──ManyToOne──→ User          (A page belongs to one user/owner)
 Page     ──ManyToOne──→ Group         (A page belongs to one group, nullable)
 Page     ──OneToMany──→ Attachment    (A page has many attachments)
+Page     ──ManyToMany←→ Conversation  (A conversation references many pages; a page can appear in many conversations)
 Attachment ──ManyToOne→ Page          (An attachment belongs to one page)
+Conversation ──OneToMany──→ ChatMessage (A conversation has many messages)
+Conversation ──ManyToOne──→ User       (A conversation belongs to one user)
+ChatMessage ──ManyToOne──→ Conversation (A message belongs to one conversation)
 ```
 
 ---
@@ -240,7 +303,10 @@ src/main/java/com/example/demo/
 │   ├── JoinRequest.java       ← Join group payload (groupName + password)
 │   ├── AttachmentRequest.java ← Attachment creation payload
 │   ├── AttachmentResponse.java ← Attachment output (id, fileName, fileUrl, fileType, fileSize, createdTime)
-│   ├── ChatRequest.java       ← AI chat payload (message + pageIds list)
+│   ├── ChatRequest.java       ← AI chat payload (message + pageIds + conversationId)
+│   ├── ChatResponse.java      ← AI chat response (conversationId + response)
+│   ├── ChatMessageResponse.java ← Chat message output (id, role, content, createdDate)
+│   ├── ConversationSummaryResponse.java ← Conversation list item (id, title, createdDate)
 │   ├── UserMapper.java        ← User ↔ UserResponse/UserRequest
 │   ├── PageMapper.java        ← Page ↔ PageResponse/PageRequest
 │   ├── GroupMapper.java       ← Group ↔ GroupResponse/GroupRequest
@@ -251,13 +317,18 @@ src/main/java/com/example/demo/
 │   ├── PageRepository.java    ← findByIdAndUserId, findByUserId, findByGroupId, findByUserIdAndGroupId,
 │   │                            findByIdAndUserOrGroupMember (@Query with LEFT JOIN for group member access)
 │   ├── GroupRepository.java   ← findByName, findByMembersId, existsByIdAndMembersId
-│   └── AttachmentRepository.java ← findByPageId
+│   ├── AttachmentRepository.java ← findByPageId
+│   ├── ConversationRepository.java ← findByUserIdOrderByCreatedDateDesc, findByIdAndUserId
+│   └── ChatMessageRepository.java ← findByConversationIdOrderByCreatedDateAsc (with/without Pageable)
 │
 ├── Entities/                  ← JPA entities
 │   ├── User.java              → table: app_user
 │   ├── Page.java              → table: page
 │   ├── Group.java             → table: app_group
-│   └── Attachment.java        → table: page_attachment (Lombok @Getter/@Setter/@NoArgsConstructor)
+│   ├── Attachment.java        → table: page_attachment (Lombok @Getter/@Setter/@NoArgsConstructor)
+│   ├── Conversation.java      → table: conversation (multi-turn chat session)
+│   ├── ChatMessage.java       → table: chat_message (individual chat message)
+│   └── Role.java              → enum: USER, ASSISTANT
 │
 ├── ExceptionHandling/
 │   └── GlobalExceptionHandler.java  ← @ControllerAdvice exception handler
@@ -627,17 +698,29 @@ This endpoint allows any **group member** (not just the page owner) to update a 
 
 | Method | Endpoint     | Description                                                                 |
 | ------ | ------------ | --------------------------------------------------------------------------- |
-| POST   | `/api/chat`  | Send a message to the AI assistant with optional note context               |
+| POST   | `/api/chat`  | Send a message to the AI assistant with optional note context (multi-turn)  |
+| GET    | `/api/chat/conversations` | List all of the current user's chat conversations               |
+| GET    | `/api/chat/conversations/{id}` | Get the full message history of a conversation                |
+| DELETE | `/api/chat/conversations/{id}` | Delete a conversation (returns 204 No Content)                 |
 
 #### POST `/api/chat`
 ```json
-// Request
+// Request (new conversation)
 {
   "message": "Bu notlar hakkında ne düşünüyorsun?",
   "pageIds": [1, 2, 3]
 }
 // Success Response (200)
-{ "response": "Notlarınızı inceledim... (AI generated response)" }
+{ "conversationId": 1, "response": "Notlarınızı inceledim... (AI generated response)" }
+
+// Request (continue existing conversation)
+{
+  "message": "Peki ikinci notta ne anlatılmış?",
+  "pageIds": [1, 2, 3],
+  "conversationId": 1
+}
+// Success Response (200)
+{ "conversationId": 1, "response": "İkinci notta... (AI generated response)" }
 
 // Request (without context - general chat)
 {
@@ -645,23 +728,62 @@ This endpoint allows any **group member** (not just the page owner) to update a 
   "pageIds": []
 }
 // Success Response (200)
-{ "response": "Merhaba! Ben NoteP asistanıyım... (AI generated response)" }
+{ "conversationId": 2, "response": "Merhaba! Ben NoteP asistanıyım... (AI generated response)" }
 ```
 
 - **Auth:** Required (JWT token)
 - **Request body:** `ChatRequest` record with fields:
   - `message` (String, @NotBlank) - The user's message
   - `pageIds` (List<Long>, nullable) - Optional list of page IDs to use as context
+  - `conversationId` (Long, nullable) - Optional conversation ID. If null → new conversation is created with the first 30 chars of the message as title. If provided → continues the existing conversation (must belong to the authenticated user).
 - **How it works:**
   1. `ChatController` receives the `ChatRequest`
   2. `ChatService.handleChatWithContext()` retrieves authenticated user
-  3. For each page ID, it fetches the page using `PageRepository.findByIdAndUserOrGroupMember()` (allows access if user owns the page OR is a member of the page's group)
-  4. Creates context objects containing title, content, and file URLs for each page
-  5. Passes context to `IAiService.generateResponse()` 
-  6. `GeminiServiceImpl` implements the AI service using Spring AI's `ChatModel` (Google Gemini 2.5 Flash)
-  7. The system prompt instructs the AI to act as NoteP's smart assistant, answering in Turkish
-  8. File URLs from attachments are loaded as `Media` objects (images, PDFs, etc.) and sent to Gemini for multimodal understanding
+  3. If `conversationId` is null → creates a new `Conversation` (title = first 30 chars of message + "..."). If provided → validates via `ConversationRepository.findByIdAndUserId()` (checks ownership)
+  4. For each page ID, it fetches the page using `PageRepository.findByIdAndUserOrGroupMember()` (allows access if user owns the page OR is a member of the page's group)
+  5. Creates context objects containing title, content, and file URLs for each page
+  6. Loads the last 20 messages of the conversation as history (via `PageRequest.of(0, 20)`)
+  7. Passes context + history to `IAiService.generateResponse(userMessage, contexts, history)`
+  8. Saves both the user message and the AI response as `ChatMessage` records (roles: USER/ASSISTANT)
+  9. `GeminiServiceImpl` implements the AI service using Spring AI's `ChatModel` (Google Gemini 2.5 Flash)
+  10. The system prompt instructs the AI to act as NoteP's smart assistant, answering in Turkish
+  11. File URLs from attachments are loaded as `Media` objects (images, PDFs, etc.) and sent to Gemini for multimodal understanding
+  12. Conversation history is added as alternating `UserMessage` / `AssistantMessage` objects before the current message
+  13. Returns `ChatResponse` (conversationId + response)
 - **Validation:** `message` field cannot be blank (`@NotBlank`)
+
+#### GET `/api/chat/conversations`
+```json
+// Success Response (200)
+[
+  { "id": 1, "title": "Bu notlar hakkında ne düşünüyor", "createdDate": "2025-06-19T03:00:00" },
+  { "id": 2, "title": "Merhaba, nasılsın?", "createdDate": "2025-06-18T05:30:00" }
+]
+```
+- Returns all of the authenticated user's conversations, ordered by `createdDate DESC`
+- Each item contains `id`, `title`, and `createdDate`
+
+#### GET `/api/chat/conversations/{id}`
+```json
+// Success Response (200)
+[
+  { "id": 1, "role": "USER", "content": "Bu notlar hakkında ne düşünüyorsun?", "createdDate": "2025-06-19T03:00:01" },
+  { "id": 2, "role": "ASSISTANT", "content": "Notlarınızı inceledim...", "createdDate": "2025-06-19T03:00:05" },
+  { "id": 3, "role": "USER", "content": "Peki ikinci not ne anlatılmış?", "createdDate": "2025-06-19T03:01:00" }
+]
+```
+- Returns all messages of a conversation, ordered by `createdDate ASC`
+- Only accessible by the conversation owner (validated via `ConversationRepository.findByIdAndUserId()`)
+- Throws `SecurityException` if not owned by the current user
+
+#### DELETE `/api/chat/conversations/{id}`
+```json
+// Success (204 No Content) - empty body
+// Error (400)
+{ "error": "Oturum bulunamadı veya yetkisiz erişim!", "status": 400, "path": "/api/chat/conversations/99" }
+```
+- Deletes a conversation (and its messages via `orphanRemoval = true`)
+- Only the conversation owner can delete it
 
 ---
 
@@ -822,18 +944,29 @@ Handled by `GlobalExceptionHandler.java` (a `@ControllerAdvice` class):
 3. Sets `page.setUser(null)` then `page.setUser(authenticatedUser)`
 4. Saves via `pageRepository.save(page)`
 
-### AI Chat Data Flow
-1. Controller receives `ChatRequest` (message + optional pageIds)
+### AI Chat Data Flow (Multi-Turn)
+1. Controller receives `ChatRequest` (message + optional pageIds + optional conversationId)
 2. `ChatService` retrieves authenticated user
-3. For each pageId, fetches the page (checks ownership OR group membership via `findByIdAndUserOrGroupMember`)
-4. Gathers context: title, content, and file attachment URLs
-5. Calls `IAiService.generateResponse(userMessage, contexts)`
-6. `GeminiServiceImpl` creates:
+3. If `conversationId` is null → creates new `Conversation` (title = first 30 chars of user message). If provided → validates ownership via `findByIdAndUserId()`
+4. For each pageId, fetches the page (checks ownership OR group membership via `findByIdAndUserOrGroupMember`)
+5. Gathers context: title, content, and file attachment URLs
+6. Loads last 20 chat messages as history (via `ChatMessageRepository.findByConversationIdOrderByCreatedDateAsc` with Pageable)
+7. Calls `IAiService.generateResponse(userMessage, contexts, history)`
+8. Saves user's message and AI response as `ChatMessage` records (roles USER/ASSISTANT)
+9. `GeminiServiceImpl` creates:
    - System prompt (Turkish, instructs AI to be NoteP assistant)
    - Context text from note content
    - Media objects from attachment file URLs (images, PDFs, etc.)
-7. Sends to Google Gemini 2.5 Flash via Spring AI `ChatModel.call()`
-8. Returns response text
+   - History messages as alternating `UserMessage` / `AssistantMessage` objects
+10. Sends to Google Gemini 2.5 Flash via Spring AI `ChatModel.call()`
+11. Returns `ChatResponse` (conversationId + response text)
+
+### Conversation Management
+- **Create:** Automatically created when `conversationId` is null on `POST /api/chat`. Title derived from first 30 chars of the message.
+- **List:** `GET /api/chat/conversations` → `ConversationSummaryResponse` list (id, title, createdDate), ordered newest first.
+- **Read:** `GET /api/chat/conversations/{id}` → `ChatMessageResponse` list (id, role, content, createdDate), ensures ownership via `findByIdAndUserId`.
+- **Delete:** `DELETE /api/chat/conversations/{id}` → 204 No Content. Messages auto-deleted via `orphanRemoval = true`.
+- **Security:** All conversation operations verify the conversation belongs to the authenticated user.
 
 ---
 
@@ -924,12 +1057,22 @@ if (groupRepository.existsByIdAndMembersId(groupId, userId)) {
 void updatePasswordByEmail(@Param("eMail") String eMail, @Param("password") String password);
 ```
 
-### How AI chat works with page context:
+### How AI chat works with page context (multi-turn):
 ```java
 // ChatService.java
-@Transactional(readOnly = true)
-public String handleChatWithContext(String userMessage, List<Long> pageIds) {
+@Transactional
+public ChatResponse handleChatWithContext(String userMessage, List<Long> pageIds, Long conversationId) {
     User u = getAuthanticatedUser();
+    Conversation conversation;
+    if (conversationId != null) {
+        conversation = conversationRepository.findByIdAndUserId(conversationId, u.getId())
+            .orElseThrow(() -> new SecurityException("Geçersiz oturum veya yetkisiz erişim! ID: " + conversationId));
+    } else {
+        String title = userMessage.length() > 30 ? userMessage.substring(0, 30) + "..." : userMessage;
+        conversation = new Conversation(u, title);
+        conversation = conversationRepository.save(conversation);
+    }
+
     List<Map<String, Object>> contexts = new ArrayList<>();
     if (pageIds != null && !pageIds.isEmpty()) {
         for (Long pageId : pageIds) {
@@ -948,7 +1091,15 @@ public String handleChatWithContext(String userMessage, List<Long> pageIds) {
             contexts.add(context);
         }
     }
-    return aiService.generateResponse(userMessage, contexts);
+
+    // Load last 20 messages as history
+    List<ChatMessage> history = chatMessageRepository
+        .findByConversationIdOrderByCreatedDateAsc(conversation.getId(), PageRequest.of(0, 20));
+
+    String aiResponse = aiService.generateResponse(userMessage, contexts, history);
+    chatMessageRepository.save(new ChatMessage(Role.USER, userMessage, conversation));
+    chatMessageRepository.save(new ChatMessage(Role.ASSISTANT, aiResponse, conversation));
+    return new ChatResponse(conversation.getId(), aiResponse);
 }
 ```
 
@@ -994,7 +1145,9 @@ Optional<Page> findByIdAndUserOrGroupMember(@Param("pageId") Long pageId, @Param
 - **Single object:** Direct JSON object (e.g., UserResponse, GroupResponse)
 - **List:** JSON array of objects
 - **Login:** **Raw string** (the JWT token itself, NOT wrapped in JSON!)
-- **Chat:** `{ "response": "...AI generated text..." }`
+- **Chat:** `{ "conversationId": 1, "response": "...AI generated text..." }`
+- **Conversation list:** JSON array of `ConversationSummaryResponse` objects (`id`, `title`, `createdDate`)
+- **Conversation messages:** JSON array of `ChatMessageResponse` objects (`id`, `role`, `content`, `createdDate`)
 
 ### Error Responses
 All errors follow this pattern (except Spring Security errors):
@@ -1031,6 +1184,8 @@ All errors follow this pattern (except Spring Security errors):
 - "Page doesn't have a group" → Page not associated with any group
 - "This group doesn't exist!" → Group not found (by ID)
 - "Not bulunamadı!" → Page not found (ChatService)
+- "Geçersiz oturum veya yetkisiz erişim! ID: ..." → Invalid conversation or unauthorized access (ChatService)
+- "Oturum bulunamadı veya yetkisiz erişim!" → Conversation not found or unauthorized access (ChatService)
 
 ---
 
@@ -1093,8 +1248,10 @@ For a frontend developer building against this API:
 8. **Error handling:** All business errors return HTTP 400 with JSON body containing `error`, `status`, `path`
 9. **Validation errors:** Returned as HTTP 400 (handled by Spring)
 10. **Join group flow:** `POST /api/groups/join` with body `{ "groupName": "...", "password": "..." }` (NOT `/join/{id}`)
-11. **AI Chat flow:** `POST /api/chat` with body `{ "message": "...", "pageIds": [1, 2] }` (pageIds is optional) → response is `{ "response": "..." }`
-12. **File uploads:** `POST /api/pages/{pageId}/attachments` with `Content-Type: multipart/form-data`, field name: `file`. Max 10MB per file, 15MB per request. Files stored in Supabase S3.
+11. **AI Chat flow (new conversation):** `POST /api/chat` with body `{ "message": "...", "pageIds": [1, 2] }` (pageIds is optional) → response is `{ "conversationId": 1, "response": "..." }`. Store the `conversationId`.
+12. **AI Chat flow (continue conversation):** `POST /api/chat` with body `{ "message": "...", "pageIds": [1, 2], "conversationId": 1 }` → response is `{ "conversationId": 1, "response": "..." }`
+13. **Conversation management:** `GET /api/chat/conversations` (list all conversations), `GET /api/chat/conversations/{id}` (get message history), `DELETE /api/chat/conversations/{id}` (delete conversation). All require JWT and only the owner can access their conversations.
+14. **File uploads:** `POST /api/pages/{pageId}/attachments` with `Content-Type: multipart/form-data`, field name: `file`. Max 10MB per file, 15MB per request. Files stored in Supabase S3.
 
 ---
 
