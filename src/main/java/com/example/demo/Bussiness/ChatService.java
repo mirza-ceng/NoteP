@@ -125,7 +125,7 @@ public class ChatService {
     @Transactional(readOnly = true)
     public List<ChatMessageResponse> getConversationMessages(Long conversationId) {
         User u = getAuthanticatedUser();
-        if (!conversationRepository.existByIdAndUserId(conversationId, u.getId())) {
+        if (!conversationRepository.existsByIdAndUserId(conversationId, u.getId())) {
             throw new SecurityException("Oturum bulunamadı veya yetkisiz erişim!");
         }
 
