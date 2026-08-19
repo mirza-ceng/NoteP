@@ -17,6 +17,8 @@ import org.springframework.data.repository.query.Param;
  */
 public interface PageRepository extends JpaRepository<Page, Long> {
 
+    Optional<Page> findByIdAndUserIdAndGroupId(Long id, Long userId, Long groupId);
+
     Optional<Page> findByIdAndUserId(Long id, Long userId);
 
     List<Page> findByUserId(Long userId);

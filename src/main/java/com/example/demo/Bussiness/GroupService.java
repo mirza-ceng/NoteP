@@ -146,6 +146,12 @@ public class GroupService {
     //PAGE 
     @Transactional
     public List<PageResponse> getPages(Long id) {
+        User u = getAuthanticatedUser();
+        Long userId = u.getId();
+        if (!groupRepository.existsByIdAndMembersId(id, userId)) {
+            throw new RuntimeException("You are not member of this group!");
+
+        }
         List<Page> pages = pageRepository.findByGroupId(id);
         return pages.stream().map(pageMapper::toResponse).collect(Collectors.toList());
     }
@@ -154,19 +160,16 @@ public class GroupService {
     public void updatePageOfGroup(Long groupId, Long pageId, PageRequest pageReq) {
         User u = getAuthanticatedUser();
         Long userId = u.getId();
-        if (groupRepository.existsByIdAndMembersId(groupId, userId)) {
-
-            Page originPage = pageRepository.findByIdAndUserId(pageId, userId).orElseThrow( //owner kontrolü
-                    () -> new ResourceNotFoundException("Page not found "));
-
-            pageMapper.updateEntityWithResponse(originPage, pageReq);
-
-            pageRepository.save(originPage);
-
-        } else {
+        if (!groupRepository.existsByIdAndMembersId(groupId, userId)) {
             throw new RuntimeException("You are not member of this group!");
-        }
 
+        }
+        Page originPage = pageRepository.findByIdAndUserIdAndGroupId(pageId, userId, groupId).orElseThrow( //owner kontrolü
+                () -> new ResourceNotFoundException("Page not found or you are not owner!       "));
+
+        pageMapper.updateEntityWithResponse(originPage, pageReq);
+
+        pageRepository.save(originPage);
     }
 
 }
