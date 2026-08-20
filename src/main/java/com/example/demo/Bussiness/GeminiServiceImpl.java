@@ -39,15 +39,15 @@ public class GeminiServiceImpl implements IAiService {
     public String generateResponse(String userMessage, List<Map<String, Object>> contexts, List<ChatMessage> history) {
         String systemInstruction = """
     Sen NoteP uygulamasının akıllı asistanısın.
-    Sana kullanıcıya ait notların içerikleri ve bu notlara eklenmiş olan dosyaların internet adresleri (URL) sağlanacaktır.
+ Kullanıcıya uygun biçimde cevap ver
+    """;
+ /*  Sana kullanıcıya ait notların içerikleri ve bu notlara eklenmiş olan dosyaların internet adresleri (URL) sağlanacaktır.
     
     Eğer kullanıcı ekteki dosyalarla ilgili bir soru sorarsa:
     1. Sana sağlanan URL stringlerini incele (dosya adı, uzantısı veya link yapısından anlam çıkarmaya çalış).
     2. Eğer link bir dosya indirme bağlantısıysa (attachment) veya içeriği doğrudan göremiyorsan, kullanıcıya dürüstçe içeriği göremediğini söyle AMA linkteki dosya adını (örneğin 'dummy.pdf' veya 'ISO_C_Logo.png') ve türünü belirterek mantıklı bir yönlendirme yap. Uydurma, ama direkt 'Sadece URL görüyorum' diyerek de kestirip atma.
     
-    Her zaman nazik, net ve Türkçe yanıt ver.
-    """;
-
+    Her zaman nazik, net ve Türkçe yanıt ver.*/
         List<Media> mediaList = new ArrayList<>();
         StringBuilder contextBuilder = new StringBuilder();
 
